@@ -11,7 +11,7 @@ from sklearn.preprocessing import LabelEncoder
 from typing import Dict, Any, Tuple, Optional
 
 # Suppress XGBoost warnings
-warnings.filterwarnings('ignore', category=UserWarning, module='xgboost')
+warnings.filterwarnings("ignore", category=UserWarning, module="xgboost")
 
 class VehicleConditionPredictor:
     """Main class for vehicle condition prediction logic"""

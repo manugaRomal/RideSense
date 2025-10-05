@@ -5,8 +5,12 @@ Contains all the Streamlit user interface components
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import warnings
 from typing import Dict, Any, List
 from .logic import VehicleConditionPredictor
+
+# Suppress Streamlit deprecation warnings
+warnings.filterwarnings("ignore", message=".*use_container_width.*")
 
 class RideSenseUI:
     """Main UI class for the RideSense application"""
@@ -95,7 +99,7 @@ class RideSenseUI:
     def render_sidebar(self, models: Dict[str, Any]) -> tuple:
         """Render the sidebar with model selection and info"""
         with st.sidebar:
-            st.header("Model Selection")
+            st.header("🤖 Model Selection")
             
             # Model selection
             selected_model_name = st.selectbox(
@@ -108,7 +112,7 @@ class RideSenseUI:
             
             # Model information
             st.markdown('<div class="model-info">', unsafe_allow_html=True)
-            st.subheader("Model Info")
+            st.subheader("📊 Model Info")
             st.write(f"**Selected:** {selected_model_name}")
             
             model_info = self.predictor.get_model_info(selected_model)
@@ -117,9 +121,9 @@ class RideSenseUI:
             st.markdown('</div>', unsafe_allow_html=True)
             
             # Available models list
-            st.subheader("Available Models")
+            st.subheader("📋 Available Models")
             for model_name in models.keys():
-                status = ">>" if model_name == selected_model_name else "-"
+                status = "🟢" if model_name == selected_model_name else "⚪"
                 st.write(f"{status} {model_name}")
         
         return selected_model_name, selected_model
@@ -129,7 +133,7 @@ class RideSenseUI:
         col1, col2 = st.columns([1, 1])
         
         with col1:
-            st.header("Vehicle Specifications")
+            st.header("📝 Vehicle Specifications")
             
             # Basic Information
             st.subheader("Basic Information")
@@ -175,7 +179,7 @@ class RideSenseUI:
     
     def render_input_summary(self, input_data: Dict[str, Any]):
         """Render the input summary section"""
-        st.header("Input Summary")
+        st.header("📊 Input Summary")
         
         # Create input data DataFrame
         input_df = self.predictor.create_input_dataframe(input_data)
@@ -184,12 +188,12 @@ class RideSenseUI:
     def render_prediction_button(self) -> bool:
         """Render the prediction button and return if clicked"""
         st.markdown("---")
-        return st.button("Predict Vehicle Condition", type="primary", width='stretch')
+        return st.button("🔮 Predict Vehicle Condition", type="primary", use_container_width=True)
     
     def render_prediction_results(self, prediction: str, probabilities: Dict[str, float], model_name: str):
         """Render the prediction results"""
         st.markdown("---")
-        st.header("Prediction Results")
+        st.header("🎯 Prediction Results")
         
         # Main prediction box
         condition_class = self.predictor.get_condition_css_class(prediction)
@@ -203,7 +207,7 @@ class RideSenseUI:
         
         # Prediction probabilities
         if probabilities:
-            st.subheader("Prediction Confidence")
+            st.subheader("📈 Prediction Confidence")
             
             # Create probability chart
             proba_df = pd.DataFrame(list(probabilities.items()), columns=["Condition", "Probability"])
@@ -221,7 +225,7 @@ class RideSenseUI:
             )
             fig.update_traces(textfont_size=12, textangle=0, textposition="outside")
             fig.update_layout(showlegend=False, height=400)
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True)
             
             # Confidence score
             max_prob = max(probabilities.values())
