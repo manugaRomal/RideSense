@@ -1,0 +1,366 @@
+"""
+RideSense Logic Module
+Contains all the business logic for vehicle condition prediction
+"""
+import pandas as pd
+import numpy as np
+import joblib
+import os
+import warnings
+from sklearn.preprocessing import LabelEncoder
+from typing import Dict, Any, Tuple, Optional
+
+# Suppress XGBoost warnings
+warnings.filterwarnings('ignore', category=UserWarning, module='xgboost')
+
+class VehicleConditionPredictor:
+    """Main class for vehicle condition prediction logic"""
+    
+    def __init__(self, model_dir: str = "model"):
+        self.model_dir = model_dir
+        self.models = {}
+        self.condition_mapping = {
+            0: "New",
+            1: "Like New", 
+            2: "Excellent",
+            3: "Good",
+            4: "Fair",
+            5: "Salvage"
+        }
+    
+    def load_models(self) -> Dict[str, Any]:
+        """Load all available models from the model directory"""
+        self.models = {}
+        
+        if not os.path.exists(self.model_dir):
+            return self.models
+        
+        for model_file in os.listdir(self.model_dir):
+            if model_file.endswith('.pkl'):
+                model_name = model_file.replace('.pkl', '').replace('_', ' ').title()
+                try:
+                    model_path = os.path.join(self.model_dir, model_file)
+                    self.models[model_name] = joblib.load(model_path)
+                except Exception as e:
+                    print(f"Failed to load {model_name}: {str(e)}")
+        
+        return self.models
+    
+    def preprocess_features(self, input_data: pd.DataFrame) -> pd.DataFrame:
+        """Preprocess input features for model prediction"""
+        processed_data = input_data.copy()
+        
+        # Define categorical columns based on your dataset
+        categorical_columns = [
+            'manufacturer', 'model', 'fuel', 'title_status', 
+            'transmission', 'drive', 'type', 'paint_color', 'state'
+        ]
+        
+        # Handle categorical variables with label encoding
+        for col in categorical_columns:
+            if col in processed_data.columns:
+                # Convert to string and handle missing values
+                processed_data[col] = processed_data[col].astype(str).fillna('unknown')
+                # Simple label encoding
+                le = LabelEncoder()
+                processed_data[col] = le.fit_transform(processed_data[col])
+        
+        # Ensure all columns are numeric
+        for col in processed_data.columns:
+            if processed_data[col].dtype == 'object':
+                processed_data[col] = pd.to_numeric(processed_data[col], errors='coerce').fillna(0)
+        
+        return processed_data
+    
+    def predict_condition(self, model: Any, input_data: pd.DataFrame) -> Tuple[Optional[str], Optional[Dict[str, float]]]:
+        """Make prediction using the selected model"""
+        try:
+            # Preprocess the data
+            processed_data = self.preprocess_features(input_data)
+            
+            # Make prediction
+            prediction = model.predict(processed_data)[0]
+            
+            # Get prediction probabilities if available
+            if hasattr(model, 'predict_proba'):
+                probabilities = model.predict_proba(processed_data)[0]
+                
+                # Create probability dictionary with condition names
+                proba_dict = {}
+                for i, prob in enumerate(probabilities):
+                    condition_name = self.condition_mapping.get(i, f"Class_{i}")
+                    proba_dict[condition_name] = float(prob)
+                
+                # Map the prediction to condition name
+                predicted_condition = self.condition_mapping.get(prediction, f"Class_{prediction}")
+                
+            else:
+                predicted_condition = self.condition_mapping.get(prediction, f"Class_{prediction}")
+                proba_dict = {predicted_condition: 1.0}
+            
+            return predicted_condition, proba_dict
+            
+        except Exception as e:
+            print(f"Prediction error: {str(e)}")
+            return None, None
+    
+    def get_model_info(self, model: Any) -> Dict[str, Any]:
+        """Get information about a model"""
+        info = {}
+        
+        if hasattr(model, 'n_estimators'):
+            info['estimators'] = model.n_estimators
+        if hasattr(model, 'max_depth'):
+            info['max_depth'] = model.max_depth
+        if hasattr(model, 'classes_'):
+            info['classes'] = list(model.classes_)
+        
+        return info
+    
+    def compare_models(self, input_data: pd.DataFrame) -> list:
+        """Compare predictions across all models"""
+        comparison_data = []
+        
+        for model_name, model in self.models.items():
+            pred, prob = self.predict_condition(model, input_data)
+            if pred is not None and prob is not None:
+                max_prob = max(prob.values()) if prob else 0
+                comparison_data.append({
+                    "Model": model_name,
+                    "Prediction": pred,
+                    "Confidence": f"{max_prob:.1%}"
+                })
+        
+        return comparison_data
+    
+    def get_condition_interpretation(self, condition: str) -> Tuple[str, str]:
+        """Get interpretation and styling for a condition"""
+        condition_lower = condition.lower()
+        
+        interpretations = {
+            'new': ("This vehicle is brand new with no previous use or wear.", "success"),
+            'like new': ("This vehicle is in like-new condition with minimal wear and excellent maintenance history.", "success"),
+            'excellent': ("This vehicle is in excellent condition with very minor wear expected for its age.", "info"),
+            'good': ("This vehicle is in good condition with minor wear expected for its age and mileage.", "info"),
+            'fair': ("This vehicle shows signs of wear but may still be a reasonable purchase with proper inspection.", "warning"),
+            'salvage': ("This vehicle has significant damage or issues. Consider a thorough inspection and be cautious about purchase.", "error")
+        }
+        
+        return interpretations.get(condition_lower, ("This vehicle's condition requires further evaluation.", "info"))
+    
+    def analyze_market_price(self, input_data: Dict[str, Any], predicted_condition: str) -> Dict[str, Any]:
+        """Analyze market price and provide insights"""
+        price = input_data.get('price', 0)
+        year = input_data.get('year', 2020)
+        manufacturer = input_data.get('manufacturer', '').lower()
+        model = input_data.get('model', '').lower()
+        odometer = input_data.get('odometer', 0)
+        
+        # Market analysis based on condition
+        condition_multipliers = {
+            'new': 1.0,
+            'like new': 0.95,
+            'excellent': 0.85,
+            'good': 0.75,
+            'fair': 0.60,
+            'salvage': 0.40
+        }
+        
+        # Age depreciation (rough estimate)
+        current_year = 2024
+        age = current_year - year
+        age_depreciation = max(0.3, 1.0 - (age * 0.08))  # 8% per year, minimum 30%
+        
+        # Mileage impact
+        mileage_impact = 1.0
+        if odometer > 200000:
+            mileage_impact = 0.5
+        elif odometer > 150000:
+            mileage_impact = 0.7
+        elif odometer > 100000:
+            mileage_impact = 0.85
+        elif odometer > 50000:
+            mileage_impact = 0.95
+        
+        # Calculate estimated market value
+        base_value = price / (condition_multipliers.get(predicted_condition.lower(), 0.75))
+        estimated_value = base_value * age_depreciation * mileage_impact
+        
+        # Price analysis
+        price_analysis = {
+            'current_price': price,
+            'estimated_market_value': round(estimated_value, 2),
+            'price_vs_market': round((price / estimated_value - 1) * 100, 1) if estimated_value > 0 else 0,
+            'condition_multiplier': condition_multipliers.get(predicted_condition.lower(), 0.75),
+            'age_depreciation': round(age_depreciation * 100, 1),
+            'mileage_impact': round(mileage_impact * 100, 1)
+        }
+        
+        return price_analysis
+    
+    def get_vehicle_insights(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Get important vehicle insights and facts"""
+        year = input_data.get('year', 2020)
+        manufacturer = input_data.get('manufacturer', '').lower()
+        model = input_data.get('model', '').lower()
+        odometer = input_data.get('odometer', 0)
+        owners = input_data.get('owners', 1)
+        fuel = input_data.get('fuel', '').lower()
+        transmission = input_data.get('transmission', '').lower()
+        
+        insights = {
+            'age': 2024 - year,
+            'annual_mileage': round(odometer / max(1, 2024 - year), 0),
+            'ownership_stability': 'Single Owner' if owners == 1 else f'{owners} Previous Owners',
+            'fuel_efficiency': self._get_fuel_efficiency_rating(fuel, manufacturer, model),
+            'reliability_rating': self._get_reliability_rating(manufacturer, model),
+            'maintenance_tips': self._get_maintenance_tips(manufacturer, model, year),
+            'market_trends': self._get_market_trends(manufacturer, model),
+            'red_flags': self._get_red_flags(input_data)
+        }
+        
+        return insights
+    
+    def _get_fuel_efficiency_rating(self, fuel: str, manufacturer: str, model: str) -> str:
+        """Get fuel efficiency rating"""
+        if fuel == 'electric':
+            return 'Excellent (Electric)'
+        elif fuel == 'hybrid':
+            return 'Very Good (Hybrid)'
+        elif fuel == 'gas':
+            if manufacturer in ['toyota', 'honda', 'hyundai']:
+                return 'Good (Gas)'
+            else:
+                return 'Average (Gas)'
+        elif fuel == 'diesel':
+            return 'Good (Diesel)'
+        else:
+            return 'Unknown'
+    
+    def _get_reliability_rating(self, manufacturer: str, model: str) -> str:
+        """Get reliability rating based on manufacturer and model"""
+        reliable_brands = ['toyota', 'honda', 'lexus', 'mazda', 'subaru']
+        average_brands = ['ford', 'chevrolet', 'nissan', 'hyundai', 'kia']
+        
+        if manufacturer in reliable_brands:
+            return 'High Reliability'
+        elif manufacturer in average_brands:
+            return 'Average Reliability'
+        else:
+            return 'Variable Reliability'
+    
+    def _get_maintenance_tips(self, manufacturer: str, model: str, year: int) -> list:
+        """Get maintenance tips based on vehicle"""
+        tips = []
+        
+        if year < 2015:
+            tips.append("Check for rust and corrosion")
+            tips.append("Inspect suspension components")
+        
+        if manufacturer in ['bmw', 'mercedes', 'audi']:
+            tips.append("Regular premium maintenance recommended")
+            tips.append("Check for electronic system issues")
+        
+        if manufacturer in ['toyota', 'honda']:
+            tips.append("Generally low maintenance costs")
+            tips.append("Regular oil changes sufficient")
+        
+        tips.extend([
+            "Check tire condition and alignment",
+            "Inspect brake system",
+            "Verify all lights and electronics work"
+        ])
+        
+        return tips[:5]  # Return top 5 tips
+    
+    def _get_market_trends(self, manufacturer: str, model: str) -> str:
+        """Get market trends for the vehicle"""
+        popular_models = ['camry', 'accord', 'civic', 'corolla', 'f-150', 'silverado']
+        
+        if model in popular_models:
+            return f"High demand for {model.title()} - good resale value"
+        elif manufacturer in ['toyota', 'honda']:
+            return "Strong brand reputation - stable market value"
+        else:
+            return "Standard market conditions"
+    
+    def _get_red_flags(self, input_data: Dict[str, Any]) -> list:
+        """Identify potential red flags"""
+        red_flags = []
+        
+        year = input_data.get('year', 2020)
+        odometer = input_data.get('odometer', 0)
+        owners = input_data.get('owners', 1)
+        title_status = input_data.get('title_status', '').lower()
+        
+        if year < 2010:
+            red_flags.append("Vehicle is over 14 years old")
+        
+        if odometer > 200000:
+            red_flags.append("Very high mileage - potential mechanical issues")
+        
+        if owners > 3:
+            red_flags.append("Multiple previous owners - check maintenance history")
+        
+        if title_status in ['salvage', 'rebuilt']:
+            red_flags.append("Salvage/Rebuilt title - significant damage history")
+        
+        if title_status == 'lien':
+            red_flags.append("Lien on title - verify ownership")
+        
+        return red_flags
+    
+    def get_condition_css_class(self, condition: str) -> str:
+        """Get CSS class for condition styling"""
+        condition_lower = condition.lower().replace(' ', '-')
+        return f"condition-{condition_lower}" if condition_lower in ['new', 'like-new', 'excellent', 'good', 'fair', 'salvage'] else "condition-good"
+    
+    def validate_input_data(self, input_data: Dict[str, Any]) -> Tuple[bool, str]:
+        """Validate input data"""
+        required_fields = ['price', 'year', 'manufacturer', 'model', 'fuel', 'transmission', 'drive', 'type', 'state']
+        
+        for field in required_fields:
+            if field not in input_data or not input_data[field]:
+                return False, f"Missing required field: {field}"
+        
+        # Validate numeric fields
+        if input_data['price'] <= 0:
+            return False, "Price must be greater than 0"
+        
+        if input_data['year'] < 1900 or input_data['year'] > 2025:
+            return False, "Year must be between 1900 and 2025"
+        
+        if input_data['odometer'] < 0:
+            return False, "Odometer must be non-negative"
+        
+        if input_data['owners'] < 0:
+            return False, "Number of owners must be non-negative"
+        
+        return True, "Valid"
+    
+    def create_input_dataframe(self, input_data: Dict[str, Any]) -> pd.DataFrame:
+        """Create a DataFrame from input data"""
+        return pd.DataFrame([{
+            "price": input_data['price'],
+            "year": input_data['year'],
+            "manufacturer": input_data['manufacturer'],
+            "model": input_data['model'],
+            "cylinders": input_data.get('cylinders', 4),
+            "fuel": input_data['fuel'],
+            "odometer": input_data.get('odometer', 0),
+            "title_status": input_data.get('title_status', 'clean'),
+            "transmission": input_data['transmission'],
+            "drive": input_data['drive'],
+            "type": input_data['type'],
+            "paint_color": input_data.get('paint_color', 'white'),
+            "state": input_data['state'],
+            "owners": input_data.get('owners', 1),
+            "location_cluster": input_data.get('location_cluster', 0)
+        }])
+
+
+if __name__ == "__main__":
+    # Example usage
+    predictor = VehicleConditionPredictor()
+    models = predictor.load_models()
+    print(f"Loaded {len(models)} models: {list(models.keys())}")
