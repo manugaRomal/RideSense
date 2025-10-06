@@ -177,7 +177,7 @@ class RideSenseUI:
         
         # Create input data DataFrame
         input_df = self.predictor.create_input_dataframe(input_data)
-        st.dataframe(input_df, width='stretch')
+        st.dataframe(input_df, use_container_width=True)
     
     def render_prediction_button(self) -> bool:
         """Render the prediction button and return if clicked"""
@@ -341,7 +341,7 @@ class RideSenseUI:
         # Display as table
         import pandas as pd
         similar_df = pd.DataFrame(similar_vehicles)
-        st.dataframe(similar_df, width='stretch')
+        st.dataframe(similar_df, use_container_width=True)
         
         st.info("These are estimated similar vehicles based on your criteria. Actual market prices may vary.")
     
