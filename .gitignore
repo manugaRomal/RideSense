@@ -1,8 +1,8 @@
 # RideSense - Git Ignore File
 
-# Model files (large binary files) - except decision tree
+# Model files (large binary files) - exclude all .pkl files
 model/
-!model/decision_tree.pkl
+*.pkl
 *.joblib
 *.h5
 *.pth

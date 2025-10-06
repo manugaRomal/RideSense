@@ -7,6 +7,7 @@ import numpy as np
 import joblib
 import os
 import warnings
+import requests
 from sklearn.preprocessing import LabelEncoder
 from typing import Dict, Any, Tuple, Optional
 
@@ -30,16 +31,59 @@ class VehicleConditionPredictor:
         self.load_model()
     
     def load_model(self) -> bool:
-        """Load only the Decision Tree model"""
+        """Load Random Forest model from Google Drive or local file"""
+        # Create model directory if it doesn't exist
         if not os.path.exists(self.model_dir):
-            return False
+            os.makedirs(self.model_dir)
         
-        model_path = os.path.join(self.model_dir, 'decision_tree.pkl')
+        model_path = os.path.join(self.model_dir, 'random_forest.pkl')
+        
+        # Try to load from local file first
+        if os.path.exists(model_path):
+            try:
+                self.model = joblib.load(model_path)
+                print("Random Forest model loaded from local file")
+                return True
+            except Exception as e:
+                print(f"Error loading local Random Forest model: {e}")
+        
+        # If local file doesn't exist, try to download from Google Drive
+        print("Local Random Forest model not found, attempting to download from Google Drive...")
+        return self.download_model_from_drive()
+    
+    def download_model_from_drive(self) -> bool:
+        """Download Random Forest model from Google Drive"""
+        # Google Drive file ID - you'll need to replace this with your actual file ID
+        # To get the file ID: 1. Upload your random_forest.pkl to Google Drive
+        # 2. Right-click and "Get link" 
+        # 3. Extract the file ID from the URL (long string between /d/ and /view)
+        file_id = "YOUR_GOOGLE_DRIVE_FILE_ID_HERE"  # Replace with actual file ID
+        
+        # Google Drive direct download URL
+        url = f"https://drive.google.com/uc?export=download&id={file_id}"
+        
+        model_path = os.path.join(self.model_dir, 'random_forest.pkl')
+        
         try:
+            print(f"Downloading Random Forest model from Google Drive...")
+            response = requests.get(url, stream=True)
+            response.raise_for_status()
+            
+            # Download the file
+            with open(model_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            
+            print(f"Random Forest model downloaded successfully ({os.path.getsize(model_path):,} bytes)")
+            
+            # Load the downloaded model
             self.model = joblib.load(model_path)
+            print("Random Forest model loaded successfully")
             return True
+            
         except Exception as e:
-            print(f"Error loading Decision Tree model: {e}")
+            print(f"Error downloading Random Forest model from Google Drive: {e}")
+            print("Please check your Google Drive file ID and internet connection")
             return False
     
     def preprocess_features(self, input_data: pd.DataFrame) -> pd.DataFrame:
@@ -149,13 +193,13 @@ class VehicleConditionPredictor:
         return info
     
     def get_model_info(self) -> Dict[str, Any]:
-        """Get information about the Decision Tree model"""
+        """Get information about the Random Forest model"""
         if self.model is None:
             return {"error": "Model not loaded"}
         
         try:
             info = {
-                "model_type": "Decision Tree",
+                "model_type": "Random Forest",
                 "is_loaded": True,
                 "has_probabilities": hasattr(self.model, 'predict_proba')
             }
@@ -165,6 +209,8 @@ class VehicleConditionPredictor:
                 info["features_count"] = self.model.n_features_in_
             if hasattr(self.model, 'n_classes_'):
                 info["classes_count"] = self.model.n_classes_
+            if hasattr(self.model, 'n_estimators'):
+                info["n_estimators"] = self.model.n_estimators
             if hasattr(self.model, 'max_depth'):
                 info["max_depth"] = self.model.max_depth
                 
