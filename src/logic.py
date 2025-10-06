@@ -7,7 +7,6 @@ import numpy as np
 import joblib
 import os
 import warnings
-import requests
 from sklearn.preprocessing import LabelEncoder
 from typing import Dict, Any, Tuple, Optional
 
@@ -31,126 +30,27 @@ class VehicleConditionPredictor:
         self.load_model()
     
     def load_model(self) -> bool:
-        """Load Random Forest model from Google Drive or fallback to Decision Tree"""
+        """Load Gradient Boosting model from local file"""
         # Create model directory if it doesn't exist
         if not os.path.exists(self.model_dir):
             os.makedirs(self.model_dir)
         
-        # Try Random Forest first
-        rf_model_path = os.path.join(self.model_dir, 'random_forest.pkl')
+        model_path = os.path.join(self.model_dir, 'gradient_boosting.pkl')
         
-        # Try to load Random Forest from local file first
-        if os.path.exists(rf_model_path):
+        # Try to load from local file
+        if os.path.exists(model_path):
             try:
-                self.model = joblib.load(rf_model_path)
-                print("Random Forest model loaded from local file")
+                self.model = joblib.load(model_path)
+                print("Gradient Boosting model loaded from local file")
                 return True
             except Exception as e:
-                print(f"Error loading local Random Forest model: {e}")
-        
-        # Try to download Random Forest from Google Drive
-        print("Local Random Forest model not found, attempting to download from Google Drive...")
-        if self.download_model_from_drive():
-            return True
-        
-        # Fallback to Decision Tree if Random Forest download fails
-        print("Random Forest download failed, falling back to Decision Tree model...")
-        dt_model_path = os.path.join(self.model_dir, 'decision_tree.pkl')
-        
-        if os.path.exists(dt_model_path):
-            try:
-                self.model = joblib.load(dt_model_path)
-                print("Decision Tree model loaded as fallback")
-                return True
-            except Exception as e:
-                print(f"Error loading Decision Tree fallback model: {e}")
-        
-        print("No models available - neither Random Forest nor Decision Tree could be loaded")
-        return False
+                print(f"Error loading Gradient Boosting model: {e}")
+                return False
+        else:
+            print(f"Gradient Boosting model not found at {model_path}")
+            print("Please ensure gradient_boosting.pkl is in the model/ directory")
+            return False
     
-    def download_model_from_drive(self) -> bool:
-        """Download Random Forest model from Google Drive"""
-        # Google Drive file ID - you'll need to replace this with your actual file ID
-        # To get the file ID: 1. Upload your random_forest.pkl to Google Drive
-        # 2. Right-click and "Get link" 
-        # 3. Extract the file ID from the URL (long string between /d/ and /view)
-        file_id = "1Zenpa8iO8fWWv2zNBrlUDIpY0kc3yDRj"  # Random Forest model from Google Drive - Updated
-        
-        # Google Drive direct download URL (try multiple formats)
-        url = f"https://drive.google.com/uc?export=download&id={file_id}"
-        
-        model_path = os.path.join(self.model_dir, 'random_forest.pkl')
-        
-        try:
-            print(f"Downloading Random Forest model from Google Drive...")
-            print(f"File ID: {file_id}")
-            print(f"Download URL: {url}")
-            
-            # First request to get the virus scan warning page
-            response = requests.get(url, timeout=30)
-            print(f"Response status: {response.status_code}")
-            
-            # Check if we got the virus scan warning page
-            if "virus scan warning" in response.text.lower():
-                print("Detected virus scan warning, trying alternative download method...")
-                
-                # Try alternative URL format
-                alt_url = f"https://drive.google.com/file/d/{file_id}/view?usp=sharing"
-                print(f"Trying alternative URL: {alt_url}")
-                
-                # Try to get the direct download link from the sharing page
-                try:
-                    alt_response = requests.get(alt_url, timeout=30)
-                    if alt_response.status_code == 200:
-                        # Look for direct download link in the page
-                        import re
-                        download_pattern = r'href="([^"]*uc[^"]*export=download[^"]*)"'
-                        download_match = re.search(download_pattern, alt_response.text)
-                        
-                        if download_match:
-                            direct_url = download_match.group(1)
-                            if not direct_url.startswith('http'):
-                                direct_url = 'https://drive.google.com' + direct_url
-                            print(f"Found direct download URL: {direct_url}")
-                            response = requests.get(direct_url, stream=True, timeout=30)
-                            print(f"Direct download response status: {response.status_code}")
-                        else:
-                            print("Could not find direct download link")
-                            return False
-                    else:
-                        print(f"Alternative URL failed with status: {alt_response.status_code}")
-                        return False
-                except Exception as e:
-                    print(f"Error with alternative download method: {e}")
-                    return False
-            else:
-                print("No virus scan warning detected, proceeding with download")
-            
-            response.raise_for_status()
-            
-            # Download the file
-            total_size = 0
-            with open(model_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
-                        total_size += len(chunk)
-            
-            print(f"Random Forest model downloaded successfully ({total_size:,} bytes)")
-            
-            # Load the downloaded model
-            self.model = joblib.load(model_path)
-            print("Random Forest model loaded successfully")
-            return True
-            
-        except requests.exceptions.RequestException as e:
-            print(f"Network error downloading Random Forest model: {e}")
-            print("Please check your internet connection and Google Drive file sharing settings")
-            return False
-        except Exception as e:
-            print(f"Error downloading Random Forest model from Google Drive: {e}")
-            print("Please check your Google Drive file ID and internet connection")
-            return False
     
     def preprocess_features(self, input_data: pd.DataFrame) -> pd.DataFrame:
         """Preprocess input features for model prediction"""
@@ -259,16 +159,13 @@ class VehicleConditionPredictor:
         return info
     
     def get_model_info(self) -> Dict[str, Any]:
-        """Get information about the loaded model"""
+        """Get information about the Gradient Boosting model"""
         if self.model is None:
             return {"error": "Model not loaded"}
         
         try:
-            # Determine model type based on the model object
-            model_type = "Random Forest" if hasattr(self.model, 'n_estimators') else "Decision Tree"
-            
             info = {
-                "model_type": model_type,
+                "model_type": "Gradient Boosting",
                 "is_loaded": True,
                 "has_probabilities": hasattr(self.model, 'predict_proba')
             }
@@ -282,6 +179,8 @@ class VehicleConditionPredictor:
                 info["n_estimators"] = self.model.n_estimators
             if hasattr(self.model, 'max_depth'):
                 info["max_depth"] = self.model.max_depth
+            if hasattr(self.model, 'learning_rate'):
+                info["learning_rate"] = self.model.learning_rate
                 
             return info
             

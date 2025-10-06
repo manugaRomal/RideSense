@@ -111,7 +111,7 @@ class RideSenseUI:
                 st.error(f"❌ {model_info['error']}")
             else:
                 st.success("✅ AI model ready")
-                st.info("Using Random Forest algorithm for accurate predictions")
+                st.info("Using Decision Tree algorithm for accurate predictions")
             
             st.markdown('</div>', unsafe_allow_html=True)
             
@@ -484,7 +484,7 @@ class RideSenseUI:
         st.plotly_chart(fig, use_container_width=True)
     
     def render_feature_importance_chart(self):
-        """Render feature importance from Random Forest model"""
+        """Render feature importance from Decision Tree model"""
         if self.predictor.model is None:
             return
         
@@ -593,7 +593,7 @@ class RideSenseUI:
         model_info = self.predictor.get_model_info()
         if "error" in model_info:
             self.render_error_message(f"❌ Model Error: {model_info['error']}")
-            self.render_info_message("Please check your internet connection. The app will download the Random Forest model from Google Drive.")
+            self.render_info_message("Please ensure decision_tree.pkl is in the 'model' directory.")
             return
         
         # Render sidebar
@@ -627,7 +627,7 @@ class RideSenseUI:
                 
                 if prediction is not None:
                     # Render prediction results
-                    self.render_prediction_results(prediction, probabilities, "Random Forest")
+                    self.render_prediction_results(prediction, probabilities, "Decision Tree")
                     
                     # Render interpretation
                     self.render_interpretation(prediction)

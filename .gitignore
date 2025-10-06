@@ -1,8 +1,8 @@
 # RideSense - Git Ignore File
 
-# Model files (large binary files) - exclude all .pkl files
+# Model files (large binary files) - except gradient boosting
 model/
-*.pkl
+!model/gradient_boosting.pkl
 *.joblib
 *.h5
 *.pth
