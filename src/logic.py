@@ -31,15 +31,31 @@ class VehicleConditionPredictor:
     
     def load_model(self) -> bool:
         """Load only the Decision Tree model"""
+        print(f"DEBUG: Looking for model directory: {self.model_dir}")
+        print(f"DEBUG: Model directory exists: {os.path.exists(self.model_dir)}")
+        
         if not os.path.exists(self.model_dir):
+            print(f"DEBUG: Model directory not found: {self.model_dir}")
             return False
         
+        print(f"DEBUG: Model directory contents: {os.listdir(self.model_dir)}")
+        
         model_path = os.path.join(self.model_dir, 'decision_tree.pkl')
+        print(f"DEBUG: Looking for model file: {model_path}")
+        print(f"DEBUG: Model file exists: {os.path.exists(model_path)}")
+        
+        if os.path.exists(model_path):
+            file_size = os.path.getsize(model_path)
+            print(f"DEBUG: Model file size: {file_size:,} bytes ({file_size/1024/1024:.2f} MB)")
+        
         try:
             self.model = joblib.load(model_path)
+            print("DEBUG: Model loaded successfully")
             return True
         except Exception as e:
-            print(f"Error loading Decision Tree model: {e}")
+            print(f"DEBUG: Error loading Decision Tree model: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     def preprocess_features(self, input_data: pd.DataFrame) -> pd.DataFrame:
