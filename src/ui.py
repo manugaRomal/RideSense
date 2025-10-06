@@ -5,6 +5,7 @@ Contains all the Streamlit user interface components
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import warnings
 from typing import Dict, Any, List
 from .logic import VehicleConditionPredictor
@@ -194,7 +195,6 @@ class RideSenseUI:
         st.markdown(f"""
         <div class="prediction-box">
             <h2>Predicted Condition: <span class="{condition_class}">{prediction}</span></h2>
-            <h3>Model Used: {model_name}</h3>
         </div>
         """, unsafe_allow_html=True)
         
@@ -345,6 +345,226 @@ class RideSenseUI:
         
         st.info("These are estimated similar vehicles based on your criteria. Actual market prices may vary.")
     
+    def render_condition_gauge(self, prediction: str, probabilities: Dict[str, float]):
+        """Render a gauge showing prediction confidence"""
+        confidence = max(probabilities.values()) if probabilities else 0.0
+        
+        fig = go.Figure(go.Indicator(
+            mode = "gauge+number+delta",
+            value = confidence * 100,
+            domain = {'x': [0, 1], 'y': [0, 1]},
+            title = {'text': f"Confidence: {prediction}"},
+            gauge = {
+                'axis': {'range': [None, 100]},
+                'bar': {'color': "darkblue"},
+                'steps': [
+                    {'range': [0, 50], 'color': "lightgray"},
+                    {'range': [50, 80], 'color': "yellow"},
+                    {'range': [80, 100], 'color': "green"}
+                ],
+                'threshold': {
+                    'line': {'color': "red", 'width': 4},
+                    'thickness': 0.75,
+                    'value': 90
+                }
+            }
+        ))
+        
+        st.plotly_chart(fig, use_container_width=True)
+    
+    def render_probability_chart(self, probabilities: Dict[str, float]):
+        """Render probability distribution as bar chart"""
+        if not probabilities:
+            return
+        
+        conditions = list(probabilities.keys())
+        probs = list(probabilities.values())
+        
+        fig = go.Figure(data=[
+            go.Bar(
+                x=conditions,
+                y=probs,
+                marker_color=['#28a745', '#20c997', '#17a2b8', '#6f42c1', '#ffc107', '#dc3545']
+            )
+        ])
+        
+        fig.update_layout(
+            title="Condition Probability Distribution",
+            xaxis_title="Vehicle Condition",
+            yaxis_title="Probability",
+            yaxis=dict(tickformat='.1%')
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    
+    def render_price_comparison_chart(self, input_data: Dict[str, Any], price_analysis: Dict[str, Any]):
+        """Render price comparison visualization"""
+        current_price = price_analysis['current_price']
+        market_value = price_analysis['estimated_market_value']
+        
+        fig = go.Figure(data=[
+            go.Bar(
+                x=['Current Price', 'Market Value'],
+                y=[current_price, market_value],
+                marker_color=['#ff6b6b', '#4ecdc4'],
+                text=[f'${current_price:,.0f}', f'${market_value:,.0f}'],
+                textposition='auto'
+            )
+        ])
+        
+        fig.update_layout(
+            title="Price vs Market Value Comparison",
+            yaxis_title="Price ($)",
+            showlegend=False
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    
+    def render_age_mileage_chart(self, input_data: Dict[str, Any]):
+        """Render age vs mileage scatter plot with condition zones"""
+        year = input_data.get('year', 2020)
+        odometer = input_data.get('odometer', 0)
+        age = 2024 - year
+        
+        # Create condition zones
+        fig = go.Figure()
+        
+        # Add condition zones
+        fig.add_trace(go.Scatter(
+            x=[0, 20], y=[0, 200000],
+            fill='tonexty',
+            fillcolor='rgba(40, 167, 69, 0.1)',
+            line=dict(color='rgba(255,255,255,0)'),
+            name='Excellent Zone',
+            showlegend=True
+        ))
+        
+        # Add your vehicle point
+        fig.add_trace(go.Scatter(
+            x=[age], y=[odometer],
+            mode='markers',
+            marker=dict(size=20, color='red', symbol='star'),
+            name='Your Vehicle',
+            showlegend=True
+        ))
+        
+        fig.update_layout(
+            title="Vehicle Age vs Mileage Analysis",
+            xaxis_title="Age (years)",
+            yaxis_title="Mileage",
+            showlegend=True
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    
+    def render_market_trend_chart(self, input_data: Dict[str, Any]):
+        """Render market trend over time"""
+        year = input_data.get('year', 2020)
+        current_year = 2024
+        
+        # Generate sample trend data
+        years = list(range(year, current_year + 1))
+        values = [50000 * (0.9 ** (current_year - y)) for y in years]  # Depreciation trend
+        
+        fig = go.Figure(data=go.Scatter(
+            x=years,
+            y=values,
+            mode='lines+markers',
+            name='Market Value Trend',
+            line=dict(color='#667eea', width=3)
+        ))
+        
+        fig.update_layout(
+            title="Market Value Trend Over Time",
+            xaxis_title="Year",
+            yaxis_title="Estimated Value ($)",
+            hovermode='x unified'
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    
+    def render_feature_importance_chart(self):
+        """Render feature importance from Decision Tree model"""
+        if self.predictor.model is None:
+            return
+        
+        # Get feature importance
+        if hasattr(self.predictor.model, 'feature_importances_'):
+            importance = self.predictor.model.feature_importances_
+            features = ['price', 'year', 'odometer', 'manufacturer', 'model', 'cylinders', 
+                       'fuel', 'transmission', 'drive', 'type', 'paint_color', 'state', 
+                       'owners', 'location_cluster', 'title_status']
+            
+            # Create importance chart
+            fig = go.Figure(data=[
+                go.Bar(
+                    x=features,
+                    y=importance,
+                    marker_color='#4ecdc4'
+                )
+            ])
+            
+            fig.update_layout(
+                title="Feature Importance in Decision Making",
+                xaxis_title="Features",
+                yaxis_title="Importance Score",
+                xaxis_tickangle=-45
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
+    
+    def render_condition_distribution_chart(self):
+        """Render overall condition distribution"""
+        # Sample data - replace with your actual distribution
+        conditions = ['New', 'Like New', 'Excellent', 'Good', 'Fair', 'Salvage']
+        counts = [5, 15, 25, 35, 15, 5]  # Sample percentages
+        
+        fig = go.Figure(data=[go.Pie(
+            labels=conditions,
+            values=counts,
+            hole=0.3,
+            marker_colors=['#28a745', '#20c997', '#17a2b8', '#6f42c1', '#ffc107', '#dc3545']
+        )])
+        
+        fig.update_layout(
+            title="Overall Vehicle Condition Distribution",
+            annotations=[dict(text='Market<br>Distribution', x=0.5, y=0.5, font_size=20, showarrow=False)]
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    
+    def render_maintenance_timeline(self, input_data: Dict[str, Any]):
+        """Render maintenance timeline based on vehicle age and mileage"""
+        year = input_data.get('year', 2020)
+        odometer = input_data.get('odometer', 0)
+        age = 2024 - year
+        
+        # Generate maintenance milestones
+        milestones = [
+            {'service': 'Oil Change', 'interval': 5000, 'next': odometer + 5000},
+            {'service': 'Tire Rotation', 'interval': 10000, 'next': odometer + 10000},
+            {'service': 'Brake Check', 'interval': 20000, 'next': odometer + 20000},
+            {'service': 'Transmission', 'interval': 60000, 'next': odometer + 60000}
+        ]
+        
+        fig = go.Figure(data=[
+            go.Bar(
+                x=[m['service'] for m in milestones],
+                y=[m['next'] for m in milestones],
+                marker_color='#ff6b6b',
+                text=[f"{m['next']:,} miles" for m in milestones],
+                textposition='auto'
+            )
+        ])
+        
+        fig.update_layout(
+            title="Upcoming Maintenance Schedule",
+            xaxis_title="Service Type",
+            yaxis_title="Mileage",
+            showlegend=False
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
     
     def render_footer(self):
         """Render the footer"""
@@ -412,16 +632,50 @@ class RideSenseUI:
                     # Render interpretation
                     self.render_interpretation(prediction)
                     
-                    # Render market analysis
+                    # Market Price Analysis (moved to top)
+                    price_analysis = self.predictor.analyze_market_price(input_data, prediction)
                     self.render_market_analysis(input_data, prediction)
+                    
+                    # Render visualizations
+                    st.markdown("---")
+                    st.subheader("📊 Interactive Analysis")
+                    
+                    # Price comparison chart
+                    self.render_price_comparison_chart(input_data, price_analysis)
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        # Condition confidence gauge
+                        self.render_condition_gauge(prediction, probabilities)
+                        
+                        # Probability distribution chart
+                        self.render_probability_chart(probabilities)
+                    
+                    with col2:
+                        # Age vs mileage analysis
+                        self.render_age_mileage_chart(input_data)
+                        
+                        # Market trend chart
+                        self.render_market_trend_chart(input_data)
+                    
+                    # Feature importance chart
+                    with st.expander("🔍 Feature Importance Analysis"):
+                        self.render_feature_importance_chart()
+                    
+                    # Market distribution chart
+                    with st.expander("📈 Market Distribution"):
+                        self.render_condition_distribution_chart()
+                    
+                    # Maintenance timeline
+                    with st.expander("🔧 Maintenance Schedule"):
+                        self.render_maintenance_timeline(input_data)
                     
                     # Render vehicle insights
                     self.render_vehicle_insights(input_data)
                     
                     # Render similar vehicles
                     self.render_similar_vehicles(input_data)
-                    
-                    # Model comparison removed - using single Decision Tree model
         
         # Render footer
         self.render_footer()
