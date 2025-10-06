@@ -1,24 +1,20 @@
 # 🚗 RideSense - Vehicle Condition Prediction System
 
-A comprehensive Streamlit application that predicts vehicle condition using multiple trained machine learning models.
+A comprehensive Streamlit application that predicts vehicle condition using a trained Gradient Boosting machine learning model.
 
 ## 🎯 Features
 
-- **Multiple Model Support**: Use Random Forest, Decision Tree, Gradient Boosting, Logistic Regression, or XGBoost
+- **Gradient Boosting Model**: High-performance ensemble learning algorithm
 - **Interactive UI**: Beautiful Streamlit interface with real-time predictions
-- **Model Comparison**: Compare predictions across different models
 - **Confidence Scores**: View prediction probabilities and confidence levels
 - **Visual Analytics**: Interactive charts and graphs
+- **Market Analysis**: Price insights and vehicle recommendations
 - **Easy Deployment**: Ready for Streamlit Cloud or any hosting platform
 
-## 📊 Supported Models
+## 📊 Model
 
-Your application includes these trained models:
-- **Random Forest** (`random_forest.pkl`)
-- **Decision Tree** (`decision_tree.pkl`) 
-- **Gradient Boosting** (`gradient_boosting.pkl`)
-- **Logistic Regression** (`logistic_regression.pkl`)
-- **XGBoost Classifier** (`xgboost_classifier.pkl`)
+Your application uses:
+- **Gradient Boosting** (`gradient_boosting.pkl`) - Optimized for accuracy and performance
 
 ## 🚀 Quick Start
 
@@ -75,27 +71,15 @@ The system predicts vehicle condition into categories like:
 ## 🔧 Model Integration
 
 ### How It Works
-1. **Model Loading**: All `.pkl` files in the `model/` directory are automatically loaded
+1. **Model Loading**: Gradient Boosting model is loaded from `model/gradient_boosting.pkl`
 2. **Feature Preprocessing**: Input data is preprocessed to match training format
-3. **Prediction**: Selected model makes prediction with confidence scores
-4. **Visualization**: Results displayed with interactive charts
+3. **Prediction**: Gradient Boosting model makes prediction with confidence scores
+4. **Visualization**: Results displayed with interactive charts and market analysis
 
-### Adding New Models
-1. Train your model using scikit-learn
-2. Save it as a `.pkl` file in the `model/` directory
-3. The app will automatically detect and load it
-
-```python
-import joblib
-from sklearn.ensemble import RandomForestClassifier
-
-# Train your model
-model = RandomForestClassifier()
-# ... training code ...
-
-# Save the model
-joblib.dump(model, 'model/my_new_model.pkl')
-```
+### Model Requirements
+- Place your trained `gradient_boosting.pkl` file in the `model/` directory
+- Model should be trained with scikit-learn's GradientBoostingClassifier
+- Ensure feature preprocessing matches the training data format
 
 ## 🌐 Deployment Options
 
@@ -128,12 +112,8 @@ RideSense/
 ├── requirements.txt       # Python dependencies
 ├── .streamlit/
 │   └── config.toml       # Streamlit configuration
-├── model/                 # Trained models directory
-│   ├── random_forest.pkl
-│   ├── decision_tree.pkl
-│   ├── gradient_boosting.pkl
-│   ├── logistic_regression.pkl
-│   └── xgboost_classifier.pkl
+├── model/                 # Trained model directory
+│   └── gradient_boosting.pkl
 ├── src/                   # Source code modules
 │   ├── __init__.py       # Package initialization
 │   ├── logic.py          # Business logic and ML operations
@@ -150,7 +130,7 @@ python test_models.py
 ```
 
 This script will:
-- Load all available models
+- Load the Gradient Boosting model
 - Test predictions with sample data
 - Display model information
 - Show prediction probabilities
@@ -168,26 +148,25 @@ This script will:
 
 ### Expected Output
 ```
-🧪 Testing models with sample data:
+Testing Gradient Boosting model with sample data:
    price  year manufacturer model  cylinders fuel  odometer title_status transmission drive   type paint_color state  owners location_cluster
-0  15000  2018      toyota camry         4  gas     75000       clean    automatic  fwd sedan       white    ca       1               5
+0  25000  2020        honda accord         4  gas     30000       clean    automatic  fwd sedan       white    ca       1              10
 
 ==================================================
 
-🔍 Testing Random Forest...
-✅ Model loaded successfully
-🎯 Prediction: good
-📊 Probabilities: {'excellent': 0.1, 'good': 0.7, 'fair': 0.15, 'poor': 0.05}
-🌳 Estimators: 100
-🏷️  Classes: ['excellent' 'fair' 'good' 'poor']
+SUCCESS: Model loaded - Gradient Boosting
+SUCCESS: Prediction = Good
+SUCCESS: Probabilities = {'New': 0.0, 'Like New': 0.0, 'Excellent': 0.0, 'Good': 1.0, 'Fair': 0.0, 'Salvage': 0.0}
+SUCCESS: Market Value = $22,666
+SUCCESS: Price vs Market = 10.3%
 ```
 
 ## 🔍 Troubleshooting
 
 ### Common Issues
 
-1. **Models not loading**:
-   - Check that `.pkl` files are in the `model/` directory
+1. **Model not loading**:
+   - Check that `gradient_boosting.pkl` is in the `model/` directory
    - Verify file permissions
    - Run `python test_models.py` to debug
 
@@ -198,7 +177,7 @@ This script will:
 
 3. **Deployment issues**:
    - Check `requirements.txt` includes all dependencies
-   - Verify model files are included in deployment
+   - Verify `gradient_boosting.pkl` is included in deployment
    - Check Streamlit Cloud logs for errors
 
 ### Debug Mode
@@ -208,10 +187,10 @@ streamlit run app.py --logger.level=debug
 
 ## 📈 Performance Tips
 
-1. **Caching**: Models are cached using `@st.cache_resource`
+1. **Caching**: Model is cached using `@st.cache_resource`
 2. **Batch Predictions**: Process multiple vehicles efficiently
-3. **Model Selection**: Choose the best performing model for your use case
-4. **Feature Engineering**: Optimize preprocessing for your specific models
+3. **Feature Engineering**: Optimize preprocessing for Gradient Boosting
+4. **Performance**: Gradient Boosting provides excellent accuracy with good speed
 
 ## 🤝 Contributing
 

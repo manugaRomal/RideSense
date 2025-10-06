@@ -108,9 +108,9 @@ class VehicleConditionPredictor:
         return processed_data
     
     def predict_condition(self, input_data: Dict[str, Any]) -> Tuple[Optional[str], Optional[Dict[str, float]]]:
-        """Make prediction using Decision Tree model"""
+        """Make prediction using Gradient Boosting model"""
         if self.model is None:
-            return "Error: Decision Tree model not loaded", {}
+            return "Error: Gradient Boosting model not loaded", {}
         
         try:
             # Create DataFrame from input data

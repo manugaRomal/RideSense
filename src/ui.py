@@ -111,7 +111,7 @@ class RideSenseUI:
                 st.error(f"❌ {model_info['error']}")
             else:
                 st.success("✅ AI model ready")
-                st.info("Using Decision Tree algorithm for accurate predictions")
+                st.info("Using Gradient Boosting algorithm for accurate predictions")
             
             st.markdown('</div>', unsafe_allow_html=True)
             
@@ -484,7 +484,7 @@ class RideSenseUI:
         st.plotly_chart(fig, use_container_width=True)
     
     def render_feature_importance_chart(self):
-        """Render feature importance from Decision Tree model"""
+        """Render feature importance from Gradient Boosting model"""
         if self.predictor.model is None:
             return
         
@@ -593,7 +593,7 @@ class RideSenseUI:
         model_info = self.predictor.get_model_info()
         if "error" in model_info:
             self.render_error_message(f"❌ Model Error: {model_info['error']}")
-            self.render_info_message("Please ensure decision_tree.pkl is in the 'model' directory.")
+            self.render_info_message("Please ensure gradient_boosting.pkl is in the 'model' directory.")
             return
         
         # Render sidebar
@@ -627,7 +627,7 @@ class RideSenseUI:
                 
                 if prediction is not None:
                     # Render prediction results
-                    self.render_prediction_results(prediction, probabilities, "Decision Tree")
+                    self.render_prediction_results(prediction, probabilities, "Gradient Boosting")
                     
                     # Render interpretation
                     self.render_interpretation(prediction)
