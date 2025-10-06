@@ -49,6 +49,8 @@ class VehicleConditionPredictor:
         
         # If local file doesn't exist, try to download from Google Drive
         print("Local Random Forest model not found, attempting to download from Google Drive...")
+        print(f"Model directory: {self.model_dir}")
+        print(f"Model path: {model_path}")
         return self.download_model_from_drive()
     
     def download_model_from_drive(self) -> bool:
@@ -66,21 +68,30 @@ class VehicleConditionPredictor:
         
         try:
             print(f"Downloading Random Forest model from Google Drive...")
-            response = requests.get(url, stream=True)
+            print(f"Download URL: {url}")
+            response = requests.get(url, stream=True, timeout=30)
+            print(f"Response status: {response.status_code}")
             response.raise_for_status()
             
             # Download the file
+            total_size = 0
             with open(model_path, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
+                    if chunk:
+                        f.write(chunk)
+                        total_size += len(chunk)
             
-            print(f"Random Forest model downloaded successfully ({os.path.getsize(model_path):,} bytes)")
+            print(f"Random Forest model downloaded successfully ({total_size:,} bytes)")
             
             # Load the downloaded model
             self.model = joblib.load(model_path)
             print("Random Forest model loaded successfully")
             return True
             
+        except requests.exceptions.RequestException as e:
+            print(f"Network error downloading Random Forest model: {e}")
+            print("Please check your internet connection and Google Drive file sharing settings")
+            return False
         except Exception as e:
             print(f"Error downloading Random Forest model from Google Drive: {e}")
             print("Please check your Google Drive file ID and internet connection")
