@@ -31,27 +31,42 @@ class VehicleConditionPredictor:
         self.load_model()
     
     def load_model(self) -> bool:
-        """Load Random Forest model from Google Drive or local file"""
+        """Load Random Forest model from Google Drive or fallback to Decision Tree"""
         # Create model directory if it doesn't exist
         if not os.path.exists(self.model_dir):
             os.makedirs(self.model_dir)
         
-        model_path = os.path.join(self.model_dir, 'random_forest.pkl')
+        # Try Random Forest first
+        rf_model_path = os.path.join(self.model_dir, 'random_forest.pkl')
         
-        # Try to load from local file first
-        if os.path.exists(model_path):
+        # Try to load Random Forest from local file first
+        if os.path.exists(rf_model_path):
             try:
-                self.model = joblib.load(model_path)
+                self.model = joblib.load(rf_model_path)
                 print("Random Forest model loaded from local file")
                 return True
             except Exception as e:
                 print(f"Error loading local Random Forest model: {e}")
         
-        # If local file doesn't exist, try to download from Google Drive
+        # Try to download Random Forest from Google Drive
         print("Local Random Forest model not found, attempting to download from Google Drive...")
-        print(f"Model directory: {self.model_dir}")
-        print(f"Model path: {model_path}")
-        return self.download_model_from_drive()
+        if self.download_model_from_drive():
+            return True
+        
+        # Fallback to Decision Tree if Random Forest download fails
+        print("Random Forest download failed, falling back to Decision Tree model...")
+        dt_model_path = os.path.join(self.model_dir, 'decision_tree.pkl')
+        
+        if os.path.exists(dt_model_path):
+            try:
+                self.model = joblib.load(dt_model_path)
+                print("Decision Tree model loaded as fallback")
+                return True
+            except Exception as e:
+                print(f"Error loading Decision Tree fallback model: {e}")
+        
+        print("No models available - neither Random Forest nor Decision Tree could be loaded")
+        return False
     
     def download_model_from_drive(self) -> bool:
         """Download Random Forest model from Google Drive"""
@@ -61,7 +76,7 @@ class VehicleConditionPredictor:
         # 3. Extract the file ID from the URL (long string between /d/ and /view)
         file_id = "1Zenpa8iO8fWWv2zNBrlUDIpY0kc3yDRj"  # Random Forest model from Google Drive - Updated
         
-        # Google Drive direct download URL
+        # Google Drive direct download URL (try multiple formats)
         url = f"https://drive.google.com/uc?export=download&id={file_id}"
         
         model_path = os.path.join(self.model_dir, 'random_forest.pkl')
@@ -70,8 +85,47 @@ class VehicleConditionPredictor:
             print(f"Downloading Random Forest model from Google Drive...")
             print(f"File ID: {file_id}")
             print(f"Download URL: {url}")
-            response = requests.get(url, stream=True, timeout=30)
+            
+            # First request to get the virus scan warning page
+            response = requests.get(url, timeout=30)
             print(f"Response status: {response.status_code}")
+            
+            # Check if we got the virus scan warning page
+            if "virus scan warning" in response.text.lower():
+                print("Detected virus scan warning, trying alternative download method...")
+                
+                # Try alternative URL format
+                alt_url = f"https://drive.google.com/file/d/{file_id}/view?usp=sharing"
+                print(f"Trying alternative URL: {alt_url}")
+                
+                # Try to get the direct download link from the sharing page
+                try:
+                    alt_response = requests.get(alt_url, timeout=30)
+                    if alt_response.status_code == 200:
+                        # Look for direct download link in the page
+                        import re
+                        download_pattern = r'href="([^"]*uc[^"]*export=download[^"]*)"'
+                        download_match = re.search(download_pattern, alt_response.text)
+                        
+                        if download_match:
+                            direct_url = download_match.group(1)
+                            if not direct_url.startswith('http'):
+                                direct_url = 'https://drive.google.com' + direct_url
+                            print(f"Found direct download URL: {direct_url}")
+                            response = requests.get(direct_url, stream=True, timeout=30)
+                            print(f"Direct download response status: {response.status_code}")
+                        else:
+                            print("Could not find direct download link")
+                            return False
+                    else:
+                        print(f"Alternative URL failed with status: {alt_response.status_code}")
+                        return False
+                except Exception as e:
+                    print(f"Error with alternative download method: {e}")
+                    return False
+            else:
+                print("No virus scan warning detected, proceeding with download")
+            
             response.raise_for_status()
             
             # Download the file
@@ -205,13 +259,16 @@ class VehicleConditionPredictor:
         return info
     
     def get_model_info(self) -> Dict[str, Any]:
-        """Get information about the Random Forest model"""
+        """Get information about the loaded model"""
         if self.model is None:
             return {"error": "Model not loaded"}
         
         try:
+            # Determine model type based on the model object
+            model_type = "Random Forest" if hasattr(self.model, 'n_estimators') else "Decision Tree"
+            
             info = {
-                "model_type": "Random Forest",
+                "model_type": model_type,
                 "is_loaded": True,
                 "has_probabilities": hasattr(self.model, 'predict_proba')
             }
