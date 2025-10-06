@@ -52,14 +52,43 @@ class VehicleConditionPredictor:
             'transmission', 'drive', 'type', 'paint_color', 'state'
         ]
         
-        # Handle categorical variables with label encoding
+        # Handle categorical variables with consistent encoding
         for col in categorical_columns:
             if col in processed_data.columns:
                 # Convert to string and handle missing values
-                processed_data[col] = processed_data[col].astype(str).fillna('unknown')
-                # Simple label encoding
-                le = LabelEncoder()
-                processed_data[col] = le.fit_transform(processed_data[col])
+                processed_data[col] = processed_data[col].astype(str).fillna('unknown').str.lower()
+                
+                # Use consistent encoding based on common values
+                if col == 'manufacturer':
+                    manufacturer_map = {
+                        'ford': 0, 'chevrolet': 1, 'toyota': 2, 'honda': 3, 'bmw': 4, 
+                        'mercedes': 5, 'audi': 6, 'nissan': 7, 'hyundai': 8, 'other': 9
+                    }
+                    processed_data[col] = processed_data[col].map(manufacturer_map).fillna(9)
+                elif col == 'fuel':
+                    fuel_map = {'gas': 0, 'diesel': 1, 'hybrid': 2, 'electric': 3, 'other': 4}
+                    processed_data[col] = processed_data[col].map(fuel_map).fillna(4)
+                elif col == 'title_status':
+                    title_map = {'clean': 0, 'lien': 1, 'rebuilt': 2, 'salvage': 3, 'missing': 4, 'other': 5}
+                    processed_data[col] = processed_data[col].map(title_map).fillna(5)
+                elif col == 'transmission':
+                    trans_map = {'automatic': 0, 'manual': 1, 'other': 2}
+                    processed_data[col] = processed_data[col].map(trans_map).fillna(2)
+                elif col == 'drive':
+                    drive_map = {'fwd': 0, 'rwd': 1, '4wd': 2, 'awd': 3, 'other': 4}
+                    processed_data[col] = processed_data[col].map(drive_map).fillna(4)
+                elif col == 'type':
+                    type_map = {'sedan': 0, 'suv': 1, 'truck': 2, 'coupe': 3, 'hatchback': 4, 'convertible': 5, 'wagon': 6, 'other': 7}
+                    processed_data[col] = processed_data[col].map(type_map).fillna(7)
+                elif col == 'paint_color':
+                    color_map = {'black': 0, 'white': 1, 'silver': 2, 'red': 3, 'blue': 4, 'green': 5, 'other': 6}
+                    processed_data[col] = processed_data[col].map(color_map).fillna(6)
+                elif col == 'state':
+                    # Simple hash-based encoding for states
+                    processed_data[col] = processed_data[col].apply(lambda x: hash(x) % 50)
+                elif col == 'model':
+                    # Simple hash-based encoding for models
+                    processed_data[col] = processed_data[col].apply(lambda x: hash(x) % 100)
         
         # Ensure all columns are numeric
         for col in processed_data.columns:
