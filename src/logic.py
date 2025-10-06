@@ -57,7 +57,7 @@ class VehicleConditionPredictor:
         # To get the file ID: 1. Upload your random_forest.pkl to Google Drive
         # 2. Right-click and "Get link" 
         # 3. Extract the file ID from the URL (long string between /d/ and /view)
-        file_id = "YOUR_GOOGLE_DRIVE_FILE_ID_HERE"  # Replace with actual file ID
+        file_id = "1Zenpa8iO8fWWv2zNBrlUDIpY0kc3yDRj"  # Random Forest model from Google Drive
         
         # Google Drive direct download URL
         url = f"https://drive.google.com/uc?export=download&id={file_id}"
