@@ -59,7 +59,7 @@ class VehicleConditionPredictor:
         # To get the file ID: 1. Upload your random_forest.pkl to Google Drive
         # 2. Right-click and "Get link" 
         # 3. Extract the file ID from the URL (long string between /d/ and /view)
-        file_id = "1Zenpa8iO8fWWv2zNBrlUDIpY0kc3yDRj"  # Random Forest model from Google Drive
+        file_id = "1Zenpa8iO8fWWv2zNBrlUDIpY0kc3yDRj"  # Random Forest model from Google Drive - Updated
         
         # Google Drive direct download URL
         url = f"https://drive.google.com/uc?export=download&id={file_id}"
@@ -68,6 +68,7 @@ class VehicleConditionPredictor:
         
         try:
             print(f"Downloading Random Forest model from Google Drive...")
+            print(f"File ID: {file_id}")
             print(f"Download URL: {url}")
             response = requests.get(url, stream=True, timeout=30)
             print(f"Response status: {response.status_code}")
