@@ -18,7 +18,7 @@ class VehicleConditionPredictor:
     
     def __init__(self, model_dir: str = "model"):
         self.model_dir = model_dir
-        self.models = {}
+        self.model = None
         self.condition_mapping = {
             0: "New",
             1: "Like New", 
@@ -27,24 +27,20 @@ class VehicleConditionPredictor:
             4: "Fair",
             5: "Salvage"
         }
+        self.load_model()
     
-    def load_models(self) -> Dict[str, Any]:
-        """Load all available models from the model directory"""
-        self.models = {}
-        
+    def load_model(self) -> bool:
+        """Load only the Decision Tree model"""
         if not os.path.exists(self.model_dir):
-            return self.models
+            return False
         
-        for model_file in os.listdir(self.model_dir):
-            if model_file.endswith('.pkl'):
-                model_name = model_file.replace('.pkl', '').replace('_', ' ').title()
-                try:
-                    model_path = os.path.join(self.model_dir, model_file)
-                    self.models[model_name] = joblib.load(model_path)
-                except Exception as e:
-                    print(f"Failed to load {model_name}: {str(e)}")
-        
-        return self.models
+        model_path = os.path.join(self.model_dir, 'decision_tree.pkl')
+        try:
+            self.model = joblib.load(model_path)
+            return True
+        except Exception as e:
+            print(f"Error loading Decision Tree model: {e}")
+            return False
     
     def preprocess_features(self, input_data: pd.DataFrame) -> pd.DataFrame:
         """Preprocess input features for model prediction"""
@@ -72,18 +68,24 @@ class VehicleConditionPredictor:
         
         return processed_data
     
-    def predict_condition(self, model: Any, input_data: pd.DataFrame) -> Tuple[Optional[str], Optional[Dict[str, float]]]:
-        """Make prediction using the selected model"""
+    def predict_condition(self, input_data: Dict[str, Any]) -> Tuple[Optional[str], Optional[Dict[str, float]]]:
+        """Make prediction using Decision Tree model"""
+        if self.model is None:
+            return "Error: Decision Tree model not loaded", {}
+        
         try:
+            # Create DataFrame from input data
+            input_df = pd.DataFrame([input_data])
+            
             # Preprocess the data
-            processed_data = self.preprocess_features(input_data)
+            processed_data = self.preprocess_features(input_df)
             
             # Make prediction
-            prediction = model.predict(processed_data)[0]
+            prediction = self.model.predict(processed_data)[0]
             
             # Get prediction probabilities if available
-            if hasattr(model, 'predict_proba'):
-                probabilities = model.predict_proba(processed_data)[0]
+            if hasattr(self.model, 'predict_proba'):
+                probabilities = self.model.predict_proba(processed_data)[0]
                 
                 # Create probability dictionary with condition names
                 proba_dict = {}
@@ -117,21 +119,30 @@ class VehicleConditionPredictor:
         
         return info
     
-    def compare_models(self, input_data: pd.DataFrame) -> list:
-        """Compare predictions across all models"""
-        comparison_data = []
+    def get_model_info(self) -> Dict[str, Any]:
+        """Get information about the Decision Tree model"""
+        if self.model is None:
+            return {"error": "Model not loaded"}
         
-        for model_name, model in self.models.items():
-            pred, prob = self.predict_condition(model, input_data)
-            if pred is not None and prob is not None:
-                max_prob = max(prob.values()) if prob else 0
-                comparison_data.append({
-                    "Model": model_name,
-                    "Prediction": pred,
-                    "Confidence": f"{max_prob:.1%}"
-                })
-        
-        return comparison_data
+        try:
+            info = {
+                "model_type": "Decision Tree",
+                "is_loaded": True,
+                "has_probabilities": hasattr(self.model, 'predict_proba')
+            }
+            
+            # Add model-specific information if available
+            if hasattr(self.model, 'n_features_in_'):
+                info["features_count"] = self.model.n_features_in_
+            if hasattr(self.model, 'n_classes_'):
+                info["classes_count"] = self.model.n_classes_
+            if hasattr(self.model, 'max_depth'):
+                info["max_depth"] = self.model.max_depth
+                
+            return info
+            
+        except Exception as e:
+            return {"error": f"Error getting model info: {str(e)}"}
     
     def get_condition_interpretation(self, condition: str) -> Tuple[str, str]:
         """Get interpretation and styling for a condition"""

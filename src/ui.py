@@ -96,37 +96,30 @@ class RideSenseUI:
         st.markdown('<h1 class="main-header">🚗 RideSense</h1>', unsafe_allow_html=True)
         st.markdown('<p class="sub-header">Vehicle Condition Prediction System</p>', unsafe_allow_html=True)
     
-    def render_sidebar(self, models: Dict[str, Any]) -> tuple:
-        """Render the sidebar with model selection and info"""
+    def render_sidebar(self):
+        """Render the sidebar with model info"""
         with st.sidebar:
-            st.header("🤖 Model Selection")
-            
-            # Model selection
-            selected_model_name = st.selectbox(
-                "Choose Model",
-                list(models.keys()),
-                help="Select which trained model to use for prediction"
-            )
-            
-            selected_model = models[selected_model_name]
+            st.header("🤖 AI Analysis")
             
             # Model information
             st.markdown('<div class="model-info">', unsafe_allow_html=True)
-            st.subheader("📊 Model Info")
-            st.write(f"**Selected:** {selected_model_name}")
+            st.subheader("📊 System Status")
             
-            model_info = self.predictor.get_model_info(selected_model)
-            for key, value in model_info.items():
-                st.write(f"**{key.title()}:** {value}")
+            model_info = self.predictor.get_model_info()
+            if "error" in model_info:
+                st.error(f"❌ {model_info['error']}")
+            else:
+                st.success("✅ AI model ready")
+                st.info("Using Decision Tree algorithm for accurate predictions")
+            
             st.markdown('</div>', unsafe_allow_html=True)
             
-            # Available models list
-            st.subheader("📋 Available Models")
-            for model_name in models.keys():
-                status = "🟢" if model_name == selected_model_name else "⚪"
-                st.write(f"{status} {model_name}")
-        
-        return selected_model_name, selected_model
+            # System info
+            st.subheader("ℹ️ About This System")
+            st.write("• Analyzes vehicle condition using AI")
+            st.write("• Provides market price insights")
+            st.write("• Offers maintenance recommendations")
+            st.write("• Shows similar vehicle comparisons")
     
     def render_input_form(self) -> Dict[str, Any]:
         """Render the input form and return input data"""
@@ -352,26 +345,6 @@ class RideSenseUI:
         
         st.info("These are estimated similar vehicles based on your criteria. Actual market prices may vary.")
     
-    def render_model_comparison(self, input_data: Dict[str, Any], models: Dict[str, Any]):
-        """Render the model comparison section"""
-        if len(models) > 1:
-            with st.expander("Compare All Models"):
-                st.subheader("Model Comparison")
-                
-                comparison_data = self.predictor.compare_models(
-                    self.predictor.create_input_dataframe(input_data)
-                )
-                
-                if comparison_data:
-                    comparison_df = pd.DataFrame(comparison_data)
-                    st.dataframe(comparison_df, width='stretch')
-                    
-                    # Agreement analysis
-                    predictions = [row["Prediction"] for row in comparison_data]
-                    most_common = max(set(predictions), key=predictions.count)
-                    agreement = predictions.count(most_common) / len(predictions)
-                    
-                    st.write(f"**Model Agreement:** {agreement:.1%} ({predictions.count(most_common)}/{len(predictions)} models predict '{most_common}')")
     
     def render_footer(self):
         """Render the footer"""
@@ -396,17 +369,15 @@ class RideSenseUI:
         # Render header
         self.render_header()
         
-        # Load models
-        with self.render_spinner("Loading trained models..."):
-            models = self.predictor.load_models()
-        
-        if not models:
-            self.render_error_message("❌ No trained models found! Please ensure your model files are in the 'model' directory.")
-            self.render_info_message("Expected files: random_forest.pkl, decision_tree.pkl, gradient_boosting.pkl, etc.")
+        # Check if model is loaded
+        model_info = self.predictor.get_model_info()
+        if "error" in model_info:
+            self.render_error_message(f"❌ Model Error: {model_info['error']}")
+            self.render_info_message("Please ensure decision_tree.pkl is in the 'model' directory.")
             return
         
-        # Render sidebar and get selected model
-        selected_model_name, selected_model = self.render_sidebar(models)
+        # Render sidebar
+        self.render_sidebar()
         
         # Main content area
         col1, col2 = st.columns([1, 1])
@@ -432,14 +403,11 @@ class RideSenseUI:
                 
                 # Make prediction
                 with self.render_spinner("Analyzing vehicle specifications..."):
-                    prediction, probabilities = self.predictor.predict_condition(
-                        selected_model, 
-                        self.predictor.create_input_dataframe(input_data)
-                    )
+                    prediction, probabilities = self.predictor.predict_condition(input_data)
                 
                 if prediction is not None:
                     # Render prediction results
-                    self.render_prediction_results(prediction, probabilities, selected_model_name)
+                    self.render_prediction_results(prediction, probabilities, "Decision Tree")
                     
                     # Render interpretation
                     self.render_interpretation(prediction)
@@ -453,8 +421,7 @@ class RideSenseUI:
                     # Render similar vehicles
                     self.render_similar_vehicles(input_data)
                     
-                    # Render model comparison
-                    self.render_model_comparison(input_data, models)
+                    # Model comparison removed - using single Decision Tree model
         
         # Render footer
         self.render_footer()

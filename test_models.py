@@ -12,13 +12,14 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
 from src.logic import VehicleConditionPredictor
 
-def test_models_with_sample_data(model_dir: str = "model") -> None:
-    """Test all models with sample data"""
+def test_decision_tree_model(model_dir: str = "model") -> None:
+    """Test Decision Tree model with sample data"""
     predictor = VehicleConditionPredictor(model_dir)
-    models = predictor.load_models()
     
-    if not models:
-        print("ERROR: No models found!")
+    # Check if model is loaded
+    model_info = predictor.get_model_info()
+    if "error" in model_info:
+        print(f"ERROR: {model_info['error']}")
         return
     
     # Sample test data
@@ -40,42 +41,31 @@ def test_models_with_sample_data(model_dir: str = "model") -> None:
         "location_cluster": 5
     }])
     
-    print("Testing models with sample data:")
+    print("Testing Decision Tree model with sample data:")
     print(test_data.to_string())
     print("\n" + "="*50)
     
-    for model_name, model in models.items():
-        try:
-            print(f"\n>> Testing {model_name}...")
-            print(f"SUCCESS: Model loaded successfully")
+    try:
+        print(f"\n>> Testing Decision Tree...")
+        print(f"SUCCESS: Model loaded successfully")
+        
+        # Test prediction using the new method
+        prediction, probabilities = predictor.predict_condition(test_data.iloc[0].to_dict())
+        
+        if prediction:
+            print(f"PREDICTION: {prediction}")
+            if probabilities:
+                print(f"PROBABILITIES: {probabilities}")
+        else:
+            print("ERROR: No prediction returned")
+        
+        # Model info
+        info = predictor.get_model_info()
+        for key, value in info.items():
+            print(f"INFO: {key.title()}: {value}")
             
-            # Preprocess the data
-            processed_data = predictor.preprocess_features(test_data)
-            print(f"INFO: Preprocessed data shape: {processed_data.shape}")
-            
-            # Test prediction
-            prediction = model.predict(processed_data)[0]
-            predicted_condition = predictor.condition_mapping.get(prediction, f"Class_{prediction}")
-            print(f"PREDICTION: {prediction} -> {predicted_condition}")
-            
-            # Test probabilities if available
-            if hasattr(model, 'predict_proba'):
-                probabilities = model.predict_proba(processed_data)[0]
-                proba_dict = {}
-                for i, prob in enumerate(probabilities):
-                    condition_name = predictor.condition_mapping.get(i, f"Class_{i}")
-                    proba_dict[condition_name] = float(prob)
-                print(f"PROBABILITIES: {proba_dict}")
-            else:
-                print("PROBABILITIES: Not available")
-            
-            # Model info
-            info = predictor.get_model_info(model)
-            for key, value in info.items():
-                print(f"INFO: {key.title()}: {value}")
-                
-        except Exception as e:
-            print(f"ERROR: Error testing {model_name}: {str(e)}")
+    except Exception as e:
+        print(f"ERROR: Error testing Decision Tree: {str(e)}")
     
     print("\n" + "="*50)
     print("SUCCESS: Model testing complete!")
@@ -191,15 +181,12 @@ def test_custom_data(custom_data: dict, model_dir: str = "model") -> None:
 
 def main():
     """Main function to run model tests"""
-    print("RideSense Model Testing")
+    print("RideSense Decision Tree Model Testing")
     print("=" * 50)
-    
-    # Test all models with sample data
-    test_models_with_sample_data()
-    
-    # Example: Test specific model
-    # test_specific_model("Random Forest")
-    
+
+    # Test Decision Tree model with sample data
+    test_decision_tree_model()
+
     # Example: Test with custom data
     # custom_vehicle = {
     #     "price": 25000,
