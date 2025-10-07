@@ -73,7 +73,7 @@ class VehicleConditionPredictor:
         self.load_model()
     
     def load_model(self) -> bool:
-        """Load Random Forest model with label encoders, fallback to Gradient Boosting"""
+        """Load Random Forest model with label encoders - NO FALLBACK"""
         print("🔍 Starting model loading process...")
         
         # Create model directory if it doesn't exist
@@ -83,7 +83,7 @@ class VehicleConditionPredictor:
         else:
             print(f"📁 Model directory exists: {self.model_dir}")
         
-        # Try Random Forest first
+        # Load Random Forest model ONLY
         rf_model_path = os.path.join(self.model_dir, 'random_forest.pkl')
         print(f"🔍 Checking for Random Forest model at: {rf_model_path}")
         
@@ -118,104 +118,32 @@ class VehicleConditionPredictor:
             except Exception as e:
                 print(f"❌ Error loading Random Forest model: {e}")
                 print(f"   📋 Full error: {str(e)}")
-        
-        # Fallback to Gradient Boosting
-        print("⚠️  Random Forest not available, trying Gradient Boosting...")
-        gb_model_path = os.path.join(self.model_dir, 'gradient_boosting.pkl')
-        print(f"🔍 Checking for Gradient Boosting model at: {gb_model_path}")
-        
-        if os.path.exists(gb_model_path):
-            try:
-                print("📦 Loading Gradient Boosting model...")
-                self.model = joblib.load(gb_model_path)
-                
-                # Log model details
-                print("✅ Gradient Boosting model loaded successfully!")
-                print(f"   📊 Model type: {type(self.model).__name__}")
-                
-                # Log model parameters if available
-                if hasattr(self.model, 'n_estimators'):
-                    print(f"   🌳 Number of estimators: {self.model.n_estimators}")
-                if hasattr(self.model, 'learning_rate'):
-                    print(f"   📈 Learning rate: {self.model.learning_rate}")
-                if hasattr(self.model, 'max_depth'):
-                    print(f"   📏 Max depth: {self.model.max_depth}")
-                
-                print("⚠️  Note: Using fallback model without label encoders")
-                return True
-            except Exception as e:
-                print(f"❌ Error loading Gradient Boosting model: {e}")
-                print(f"   📋 Full error: {str(e)}")
+                print("❌ Random Forest model failed to load. Application cannot continue.")
                 return False
         else:
-            print("❌ Neither Random Forest nor Gradient Boosting model found")
+            print("❌ Random Forest model not found")
             print("   📁 Available files in model directory:")
             if os.path.exists(self.model_dir):
                 for file in os.listdir(self.model_dir):
                     file_path = os.path.join(self.model_dir, file)
                     file_size = os.path.getsize(file_path) if os.path.isfile(file_path) else 0
                     print(f"      - {file} ({file_size:,} bytes)")
-            print("   💡 Please ensure random_forest.pkl or gradient_boosting.pkl is in the model/ directory")
+            print("   💡 Please ensure random_forest.pkl is in the model/ directory")
+            print("   🚫 No fallback available - Random Forest model is required")
             return False
     
     
     def preprocess_features(self, input_data: pd.DataFrame) -> pd.DataFrame:
-        """Preprocess input features for model prediction using label encoders"""
+        """Preprocess input features using Random Forest label encoders"""
         processed_data = input_data.copy()
         
-        # Use label encoders from the trained model (Random Forest)
-        if self.label_encoders is not None and self.categorical_cols is not None:
-            print("   🔧 Using Random Forest label encoders...")
-            for col in self.categorical_cols:
-                if col in processed_data.columns:
-                    le = self.label_encoders[col]
-                    # Transform new data to the same encoding as training
-                    processed_data[col] = le.transform(processed_data[col].astype(str))
-        else:
-            # Fallback to manual encoding for Gradient Boosting
-            print("   🔧 Using manual encoding for Gradient Boosting fallback...")
-            categorical_columns = [
-                'manufacturer', 'model', 'fuel', 'title_status', 
-                'transmission', 'drive', 'type', 'paint_color', 'state'
-            ]
-            
-            # Handle categorical variables with consistent encoding
-            for col in categorical_columns:
-                if col in processed_data.columns:
-                    # Convert to string and handle missing values
-                    processed_data[col] = processed_data[col].astype(str).fillna('unknown').str.lower()
-                    
-                    # Use consistent encoding based on common values
-                    if col == 'manufacturer':
-                        manufacturer_map = {
-                            'ford': 0, 'chevrolet': 1, 'toyota': 2, 'honda': 3, 'bmw': 4, 
-                            'mercedes': 5, 'audi': 6, 'nissan': 7, 'hyundai': 8, 'other': 9
-                        }
-                        processed_data[col] = processed_data[col].map(manufacturer_map).fillna(9)
-                    elif col == 'fuel':
-                        fuel_map = {'gasoline': 0, 'other': 1, 'diesel': 2, 'hybrid': 3, 'unknown': 4, 'electric': 5}
-                        processed_data[col] = processed_data[col].map(fuel_map).fillna(1)
-                    elif col == 'title_status':
-                        title_map = {'clean': 0, 'rebuilt': 1, 'lien': 2, 'other': 3, 'salvage': 4, 'missing': 5, 'parts only': 6}
-                        processed_data[col] = processed_data[col].map(title_map).fillna(3)
-                    elif col == 'transmission':
-                        trans_map = {'other': 0, 'automatic': 1, 'manual': 2, 'unknown': 3}
-                        processed_data[col] = processed_data[col].map(trans_map).fillna(0)
-                    elif col == 'drive':
-                        drive_map = {'unknown': 0, 'rwd': 1, '4wd': 2, 'fwd': 3}
-                        processed_data[col] = processed_data[col].map(drive_map).fillna(0)
-                    elif col == 'type':
-                        type_map = {'pickup': 0, 'other': 1, 'unknown': 2, 'coupe': 3, 'suv': 4, 'hatchback': 5, 'van': 6, 'sedan': 7, 'offroad': 8, 'bus': 9, 'convertible': 10, 'wagon': 11}
-                        processed_data[col] = processed_data[col].map(type_map).fillna(1)
-                    elif col == 'paint_color':
-                        color_map = {'white': 0, 'blue': 1, 'red': 2, 'black': 3, 'silver': 4, 'grey': 5, 'unknown': 6, 'brown': 7, 'other': 8, 'green': 9, 'custom': 10}
-                        processed_data[col] = processed_data[col].map(color_map).fillna(8)
-                    elif col == 'state':
-                        # Simple hash-based encoding for states
-                        processed_data[col] = processed_data[col].apply(lambda x: hash(x) % 50)
-                    elif col == 'model':
-                        # Simple hash-based encoding for models
-                        processed_data[col] = processed_data[col].apply(lambda x: hash(x) % 100)
+        # Use label encoders from the Random Forest model
+        print("   🔧 Using Random Forest label encoders...")
+        for col in self.categorical_cols:
+            if col in processed_data.columns:
+                le = self.label_encoders[col]
+                # Transform new data to the same encoding as training
+                processed_data[col] = le.transform(processed_data[col].astype(str))
         
         return processed_data
     
@@ -254,17 +182,7 @@ class VehicleConditionPredictor:
             # Get prediction probabilities
             print("🎯 Making prediction...")
             probs = self.model.predict_proba(processed_data)[0]  # get probabilities for first row
-            
-            # Handle different model types
-            if self.target_encoder is not None:
-                # Random Forest with target encoder
-                print("   🎯 Using Random Forest target encoder...")
-                classes = self.target_encoder.classes_
-            else:
-                # Gradient Boosting fallback - use condition mapping
-                print("   🎯 Using Gradient Boosting condition mapping...")
-                # Use the same classes as Random Forest to match probability array length
-                classes = ['excellent', 'fair', 'good', 'like new', 'new', 'salvage', 'salvaged']
+            classes = self.target_encoder.classes_
             
             print(f"   📈 Raw probabilities: {probs}")
             print(f"   🎯 Available classes: {list(classes)}")
