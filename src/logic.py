@@ -209,6 +209,9 @@ class VehicleConditionPredictor:
             for _, row in prob_df.iterrows():
                 proba_dict[row["condition"]] = float(row["probability"])
             
+            print(f"   🔍 DEBUG - Final probability dict: {proba_dict}")
+            print(f"   🔍 DEBUG - Sum of final probabilities: {sum(proba_dict.values()):.6f}")
+            
             return predicted_condition, proba_dict
             
         except Exception as e:

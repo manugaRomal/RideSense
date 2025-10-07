@@ -211,9 +211,18 @@ class RideSenseUI:
         if probabilities:
             st.subheader("📈 Prediction Confidence")
             
+            # Debug: Print probabilities to console
+            print(f"🔍 DEBUG - Raw probabilities: {probabilities}")
+            print(f"🔍 DEBUG - Probability values: {list(probabilities.values())}")
+            print(f"🔍 DEBUG - Sum of probabilities: {sum(probabilities.values())}")
+            
             # Create probability chart
             proba_df = pd.DataFrame(list(probabilities.items()), columns=["Condition", "Probability"])
             proba_df = proba_df.sort_values("Probability", ascending=False)
+            
+            # Debug: Print DataFrame
+            print(f"🔍 DEBUG - DataFrame:\n{proba_df}")
+            print(f"🔍 DEBUG - DataFrame Probability column: {proba_df['Probability'].tolist()}")
             
             # Bar chart using go.Figure for more control
             fig = go.Figure(data=[
@@ -232,7 +241,10 @@ class RideSenseUI:
                 title="Condition Probability Distribution",
                 xaxis_title="Vehicle Condition",
                 yaxis_title="Probability",
-                yaxis=dict(tickformat='.1%'),
+                yaxis=dict(
+                    tickformat='.1%',
+                    range=[0, 1]  # Force Y-axis to be 0-100%
+                ),
                 showlegend=False,
                 height=400
             )
@@ -417,7 +429,10 @@ class RideSenseUI:
             title="Condition Probability Distribution",
             xaxis_title="Vehicle Condition",
             yaxis_title="Probability",
-            yaxis=dict(tickformat='.1%'),
+            yaxis=dict(
+                tickformat='.1%',
+                range=[0, 1]  # Force Y-axis to be 0-100%
+            ),
             showlegend=False
         )
         
