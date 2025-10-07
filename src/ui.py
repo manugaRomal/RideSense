@@ -246,9 +246,15 @@ class RideSenseUI:
                     range=[0, 1]  # Force Y-axis to be 0-100%
                 ),
                 showlegend=False,
-                height=400
+                height=400,
+                # Add cache-busting and ensure consistent rendering
+                template="plotly_white",
+                margin=dict(l=50, r=50, t=50, b=50)
             )
-            st.plotly_chart(fig, use_container_width=True)
+            # Use unique key to force chart refresh and prevent caching
+            import time
+            chart_key = f"prob_chart_{int(time.time())}"
+            st.plotly_chart(fig, use_container_width=True, key=chart_key)
             
             # Confidence score
             max_prob = max(probabilities.values())
@@ -433,7 +439,10 @@ class RideSenseUI:
                 tickformat='.1%',
                 range=[0, 1]  # Force Y-axis to be 0-100%
             ),
-            showlegend=False
+            showlegend=False,
+            # Add cache-busting and ensure consistent rendering
+            template="plotly_white",
+            margin=dict(l=50, r=50, t=50, b=50)
         )
         
         st.plotly_chart(fig, use_container_width=True)
