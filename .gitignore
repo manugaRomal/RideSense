@@ -1,15 +1,6 @@
 # RideSense - Git Ignore File
 
 # Model files (large binary files) - except random forest and gradient boosting
-model/
-!model/random_forest.pkl
-!model/gradient_boosting.pkl
-*.joblib
-*.h5
-*.pth
-*.pt
-*.model
-*.bin
 
 # Data files (can be large)
 data/

@@ -17,9 +17,14 @@ class RideSenseUI:
     """Main UI class for the RideSense application"""
     
     def __init__(self):
-        self.predictor = VehicleConditionPredictor()
+        self.predictor = None
         self.setup_page_config()
         self.setup_css()
+    
+    def _ensure_predictor_loaded(self):
+        """Lazy load the predictor to avoid blocking Streamlit startup"""
+        if self.predictor is None:
+            self.predictor = VehicleConditionPredictor()
     
     def setup_page_config(self):
         """Setup Streamlit page configuration"""
@@ -106,6 +111,7 @@ class RideSenseUI:
             st.markdown('<div class="model-info">', unsafe_allow_html=True)
             st.subheader("📊 System Status")
             
+            self._ensure_predictor_loaded()
             model_info = self.predictor.get_model_info()
             if "error" in model_info:
                 st.error(f"❌ {model_info['error']}")
@@ -136,6 +142,7 @@ class RideSenseUI:
             year = st.number_input("Year", min_value=1900, max_value=2025, value=2015, help="Manufacturing year")
             
             # Dynamic manufacturer dropdown
+            self._ensure_predictor_loaded()
             manufacturers = self.predictor.get_manufacturers()
             manufacturer = st.selectbox("Manufacturer", manufacturers, index=manufacturers.index("toyota") if "toyota" in manufacturers else 0)
             
@@ -183,6 +190,7 @@ class RideSenseUI:
         st.header("📊 Input Summary")
         
         # Create input data DataFrame
+        self._ensure_predictor_loaded()
         input_df = self.predictor.create_input_dataframe(input_data)
         st.dataframe(input_df, use_container_width=True)
     
@@ -197,6 +205,7 @@ class RideSenseUI:
         st.header("🎯 Prediction Results")
         
         # Main prediction box
+        self._ensure_predictor_loaded()
         condition_class = self.predictor.get_condition_css_class(prediction)
         
         st.markdown(f"""
@@ -235,6 +244,7 @@ class RideSenseUI:
     def render_interpretation(self, prediction: str):
         """Render the interpretation section"""
         st.subheader("Interpretation")
+        self._ensure_predictor_loaded()
         interpretation, message_type = self.predictor.get_condition_interpretation(prediction)
         
         if message_type == "success":
@@ -252,6 +262,7 @@ class RideSenseUI:
         """Render market price analysis"""
         st.subheader("Market Price Analysis")
         
+        self._ensure_predictor_loaded()
         price_analysis = self.predictor.analyze_market_price(input_data, prediction)
         
         col1, col2, col3 = st.columns(3)
@@ -293,6 +304,7 @@ class RideSenseUI:
         """Render vehicle insights and facts"""
         st.subheader("Vehicle Insights & Facts")
         
+        self._ensure_predictor_loaded()
         insights = self.predictor.get_vehicle_insights(input_data)
         
         col1, col2 = st.columns(2)
@@ -492,6 +504,7 @@ class RideSenseUI:
     
     def render_feature_importance_chart(self):
         """Render feature importance from Gradient Boosting model"""
+        self._ensure_predictor_loaded()
         if self.predictor.model is None:
             return
         
@@ -597,6 +610,7 @@ class RideSenseUI:
         self.render_header()
         
         # Check if model is loaded
+        self._ensure_predictor_loaded()
         model_info = self.predictor.get_model_info()
         if "error" in model_info:
             self.render_error_message(f"❌ Model Error: {model_info['error']}")
@@ -622,6 +636,7 @@ class RideSenseUI:
             
             if predict_button:
                 # Validate input data
+                self._ensure_predictor_loaded()
                 is_valid, error_message = self.predictor.validate_input_data(input_data)
                 
                 if not is_valid:
@@ -641,6 +656,7 @@ class RideSenseUI:
                     self.render_interpretation(prediction)
                     
                     # Market Price Analysis (moved to top)
+                    self._ensure_predictor_loaded()
                     price_analysis = self.predictor.analyze_market_price(input_data, prediction)
                     self.render_market_analysis(input_data, prediction)
                     
@@ -680,6 +696,7 @@ class RideSenseUI:
                         self.render_maintenance_timeline(input_data)
                     
                     # Render vehicle insights
+                    self._ensure_predictor_loaded()
                     self.render_vehicle_insights(input_data)
                     
                     # Render similar vehicles
