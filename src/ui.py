@@ -215,23 +215,27 @@ class RideSenseUI:
             proba_df = pd.DataFrame(list(probabilities.items()), columns=["Condition", "Probability"])
             proba_df = proba_df.sort_values("Probability", ascending=False)
             
-            # Bar chart
-            fig = px.bar(
-                proba_df, 
-                x="Condition", 
-                y="Probability", 
-                color="Probability",
-                color_continuous_scale="RdYlGn",
-                title="Condition Probability Distribution"
+            # Bar chart using go.Figure for more control
+            fig = go.Figure(data=[
+                go.Bar(
+                    x=proba_df["Condition"],
+                    y=proba_df["Probability"],
+                    marker_color=['#28a745', '#20c997', '#17a2b8', '#6f42c1', '#ffc107', '#dc3545', '#6c757d'],
+                    text=[f"{prob:.1%}" for prob in proba_df["Probability"]],
+                    textfont_size=12,
+                    textangle=0,
+                    textposition="outside"
+                )
+            ])
+            
+            fig.update_layout(
+                title="Condition Probability Distribution",
+                xaxis_title="Vehicle Condition",
+                yaxis_title="Probability",
+                yaxis=dict(tickformat='.1%'),
+                showlegend=False,
+                height=400
             )
-            # Add custom text labels with proper percentage formatting
-            fig.update_traces(
-                text=[f"{prob:.1%}" for prob in proba_df["Probability"]],
-                textfont_size=12, 
-                textangle=0, 
-                textposition="outside"
-            )
-            fig.update_layout(showlegend=False, height=400)
             st.plotly_chart(fig, use_container_width=True)
             
             # Confidence score
@@ -401,7 +405,11 @@ class RideSenseUI:
             go.Bar(
                 x=conditions,
                 y=probs,
-                marker_color=['#28a745', '#20c997', '#17a2b8', '#6f42c1', '#ffc107', '#dc3545']
+                marker_color=['#28a745', '#20c997', '#17a2b8', '#6f42c1', '#ffc107', '#dc3545', '#6c757d'],
+                text=[f"{prob:.1%}" for prob in probs],
+                textfont_size=12,
+                textangle=0,
+                textposition="outside"
             )
         ])
         
@@ -409,7 +417,8 @@ class RideSenseUI:
             title="Condition Probability Distribution",
             xaxis_title="Vehicle Condition",
             yaxis_title="Probability",
-            yaxis=dict(tickformat='.1%')
+            yaxis=dict(tickformat='.1%'),
+            showlegend=False
         )
         
         st.plotly_chart(fig, use_container_width=True)
