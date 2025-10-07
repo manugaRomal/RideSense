@@ -30,25 +30,35 @@ class VehicleConditionPredictor:
         self.load_model()
     
     def load_model(self) -> bool:
-        """Load Gradient Boosting model from local file"""
+        """Load Random Forest model first, fallback to Gradient Boosting"""
         # Create model directory if it doesn't exist
         if not os.path.exists(self.model_dir):
             os.makedirs(self.model_dir)
         
-        model_path = os.path.join(self.model_dir, 'gradient_boosting.pkl')
-        
-        # Try to load from local file
-        if os.path.exists(model_path):
+        # Try Random Forest first
+        rf_model_path = os.path.join(self.model_dir, 'random_forest.pkl')
+        if os.path.exists(rf_model_path):
             try:
-                self.model = joblib.load(model_path)
+                self.model = joblib.load(rf_model_path)
+                print("Random Forest model loaded from local file")
+                return True
+            except Exception as e:
+                print(f"Error loading Random Forest model: {e}")
+        
+        # Fallback to Gradient Boosting
+        print("Random Forest not available, trying Gradient Boosting...")
+        gb_model_path = os.path.join(self.model_dir, 'gradient_boosting.pkl')
+        if os.path.exists(gb_model_path):
+            try:
+                self.model = joblib.load(gb_model_path)
                 print("Gradient Boosting model loaded from local file")
                 return True
             except Exception as e:
                 print(f"Error loading Gradient Boosting model: {e}")
                 return False
         else:
-            print(f"Gradient Boosting model not found at {model_path}")
-            print("Please ensure gradient_boosting.pkl is in the model/ directory")
+            print("Neither Random Forest nor Gradient Boosting model found")
+            print("Please ensure random_forest.pkl or gradient_boosting.pkl is in the model/ directory")
             return False
     
     
@@ -108,9 +118,9 @@ class VehicleConditionPredictor:
         return processed_data
     
     def predict_condition(self, input_data: Dict[str, Any]) -> Tuple[Optional[str], Optional[Dict[str, float]]]:
-        """Make prediction using Gradient Boosting model"""
+        """Make prediction using loaded model (Random Forest or Gradient Boosting)"""
         if self.model is None:
-            return "Error: Gradient Boosting model not loaded", {}
+            return "Error: No model loaded", {}
         
         try:
             # Create DataFrame from input data
@@ -159,13 +169,21 @@ class VehicleConditionPredictor:
         return info
     
     def get_model_info(self) -> Dict[str, Any]:
-        """Get information about the Gradient Boosting model"""
+        """Get information about the loaded model (Random Forest or Gradient Boosting)"""
         if self.model is None:
             return {"error": "Model not loaded"}
         
         try:
+            # Determine model type based on the model object
+            if hasattr(self.model, 'n_estimators') and hasattr(self.model, 'learning_rate'):
+                model_type = "Gradient Boosting"
+            elif hasattr(self.model, 'n_estimators'):
+                model_type = "Random Forest"
+            else:
+                model_type = "Unknown"
+            
             info = {
-                "model_type": "Gradient Boosting",
+                "model_type": model_type,
                 "is_loaded": True,
                 "has_probabilities": hasattr(self.model, 'predict_proba')
             }

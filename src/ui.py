@@ -111,7 +111,8 @@ class RideSenseUI:
                 st.error(f"❌ {model_info['error']}")
             else:
                 st.success("✅ AI model ready")
-                st.info("Using Gradient Boosting algorithm for accurate predictions")
+                model_type = model_info.get('model_type', 'AI')
+                st.info(f"Using {model_type} algorithm for accurate predictions")
             
             st.markdown('</div>', unsafe_allow_html=True)
             
@@ -593,7 +594,7 @@ class RideSenseUI:
         model_info = self.predictor.get_model_info()
         if "error" in model_info:
             self.render_error_message(f"❌ Model Error: {model_info['error']}")
-            self.render_info_message("Please ensure gradient_boosting.pkl is in the 'model' directory.")
+            self.render_info_message("Please ensure random_forest.pkl or gradient_boosting.pkl is in the 'model' directory.")
             return
         
         # Render sidebar
@@ -627,7 +628,8 @@ class RideSenseUI:
                 
                 if prediction is not None:
                     # Render prediction results
-                    self.render_prediction_results(prediction, probabilities, "Gradient Boosting")
+                    model_type = self.predictor.get_model_info().get('model_type', 'AI Model')
+                    self.render_prediction_results(prediction, probabilities, model_type)
                     
                     # Render interpretation
                     self.render_interpretation(prediction)
