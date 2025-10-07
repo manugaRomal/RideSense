@@ -8,7 +8,7 @@ import joblib
 import os
 import warnings
 from sklearn.preprocessing import LabelEncoder
-from typing import Dict, Any, Tuple, Optional
+from typing import Dict, Any, Tuple, Optional, List
 
 # Suppress XGBoost warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="xgboost")
@@ -19,6 +19,10 @@ class VehicleConditionPredictor:
     def __init__(self, model_dir: str = "model"):
         self.model_dir = model_dir
         self.model = None
+        self.label_encoders = None
+        self.target_encoder = None
+        self.categorical_cols = None
+        self.numeric_cols = None
         self.condition_mapping = {
             0: "New",
             1: "Like New", 
@@ -27,10 +31,49 @@ class VehicleConditionPredictor:
             4: "Fair",
             5: "Salvage"
         }
+        self.manufacturer_models = {
+            "acura": ["other", "mdx sh-", "tl", "mdx"],
+            "alfa-romeo": ["romeo stelvio ti", "other"],
+            "audi": ["other", "a4", "s5 plus 4d"],
+            "bmw": ["other", "3 series", "328i", "x5", "3 series 330i xdrive", "x5 xdrive35i"],
+            "buick": ["other", "enclave"],
+            "cadillac": ["other", "escape"],
+            "chevrolet": ["silverado 1500", "colorado", "corvette", "camry", "trailblazer", "other", "tahoe", "traverse", "impala", "trax", "malibu", "suburban", "equinox", "cruze"],
+            "chrysler": ["town & country", "3500", "other", "1500"],
+            "dodge": ["other", "1500", "charger", "f150", "durango", "1500 big horn", "caravan", "journey", "challenger r/t 2d", None],
+            "fiat": ["other"],
+            "ford": ["f-150", "other", "f150", "f150 supercrew", "f-250 duty", "mustang", "expedition", "wrangler", "focus", "escape", "taurus", "edge", "explorer", "santa fe", "transit", "fusion", "econoline", "flex"],
+            "gmc": ["silverado 1500", "sierra 2500hd", "acadia", "other", "yukon", "terrain", "sierra"],
+            "honda": ["odyssey", "civic", "cr-v", "other", "accord", "pilot", "fit"],
+            "hyundai": ["sonata", "elantra", "other"],
+            "infiniti": ["other"],
+            "jaguar": ["other"],
+            "jeep": ["cherokee", "wrangler unlimited", "wrangler", "other", "cherokee laredo", "liberty", "patriot", "compass"],
+            "kia": ["other", "optima", "soul", "sorento", "forester"],
+            "lexus": ["other", "es 350", "rx 350"],
+            "lincoln": ["other"],
+            "mazda": ["mx-5 miata", "other", "mazda3"],
+            "mercedes-benz": ["other", "c-class", "benz e350", "gla-class gla 45"],
+            "mercury": ["other"],
+            "mini": ["other"],
+            "mitsubishi": ["outlander", "other"],
+            "nissan": ["other", "elantra", "altima", "frontier", "pathfinder", "durango", "rogue", "altima 2.5 s", "versa", "maxima"],
+            "other": ["other"],
+            "pontiac": ["other"],
+            "porsche": ["other"],
+            "rover": ["other"],
+            "saturn": ["other"],
+            "subaru": ["impreza", "forester", "legacy", "other", "outback"],
+            "tesla": ["other"],
+            "toyota": ["tundra", "tacoma", "other", "rav4", "camry", "corolla", "4runner", "prius", None, "sienna"],
+            "unknown": ["scion im 4d", "other", "genesis g80 3.8 4d", "scion xb"],
+            "volkswagen": ["jetta", "passat", "other", "tiguan"],
+            "volvo": ["other"]
+        }
         self.load_model()
     
     def load_model(self) -> bool:
-        """Load Random Forest model first, fallback to Gradient Boosting"""
+        """Load Random Forest model with label encoders, fallback to Gradient Boosting"""
         # Create model directory if it doesn't exist
         if not os.path.exists(self.model_dir):
             os.makedirs(self.model_dir)
@@ -39,8 +82,13 @@ class VehicleConditionPredictor:
         rf_model_path = os.path.join(self.model_dir, 'random_forest.pkl')
         if os.path.exists(rf_model_path):
             try:
-                self.model = joblib.load(rf_model_path)
-                print("Random Forest model loaded from local file")
+                bundle = joblib.load(rf_model_path)
+                self.model = bundle["model"]
+                self.label_encoders = bundle["label_encoders"]
+                self.target_encoder = bundle["target_encoder"]
+                self.categorical_cols = bundle["categorical_cols"]
+                self.numeric_cols = bundle["numeric_cols"]
+                print("Random Forest model with label encoders loaded from local file")
                 return True
             except Exception as e:
                 print(f"Error loading Random Forest model: {e}")
@@ -63,91 +111,63 @@ class VehicleConditionPredictor:
     
     
     def preprocess_features(self, input_data: pd.DataFrame) -> pd.DataFrame:
-        """Preprocess input features for model prediction"""
+        """Preprocess input features for model prediction using label encoders"""
         processed_data = input_data.copy()
         
-        # Define categorical columns based on your dataset
-        categorical_columns = [
-            'manufacturer', 'model', 'fuel', 'title_status', 
-            'transmission', 'drive', 'type', 'paint_color', 'state'
-        ]
-        
-        # Handle categorical variables with consistent encoding
-        for col in categorical_columns:
-            if col in processed_data.columns:
-                # Convert to string and handle missing values
-                processed_data[col] = processed_data[col].astype(str).fillna('unknown').str.lower()
-                
-                # Use consistent encoding based on common values
-                if col == 'manufacturer':
-                    manufacturer_map = {
-                        'ford': 0, 'chevrolet': 1, 'toyota': 2, 'honda': 3, 'bmw': 4, 
-                        'mercedes': 5, 'audi': 6, 'nissan': 7, 'hyundai': 8, 'other': 9
-                    }
-                    processed_data[col] = processed_data[col].map(manufacturer_map).fillna(9)
-                elif col == 'fuel':
-                    fuel_map = {'gas': 0, 'diesel': 1, 'hybrid': 2, 'electric': 3, 'other': 4}
-                    processed_data[col] = processed_data[col].map(fuel_map).fillna(4)
-                elif col == 'title_status':
-                    title_map = {'clean': 0, 'lien': 1, 'rebuilt': 2, 'salvage': 3, 'missing': 4, 'other': 5}
-                    processed_data[col] = processed_data[col].map(title_map).fillna(5)
-                elif col == 'transmission':
-                    trans_map = {'automatic': 0, 'manual': 1, 'other': 2}
-                    processed_data[col] = processed_data[col].map(trans_map).fillna(2)
-                elif col == 'drive':
-                    drive_map = {'fwd': 0, 'rwd': 1, '4wd': 2, 'awd': 3, 'other': 4}
-                    processed_data[col] = processed_data[col].map(drive_map).fillna(4)
-                elif col == 'type':
-                    type_map = {'sedan': 0, 'suv': 1, 'truck': 2, 'coupe': 3, 'hatchback': 4, 'convertible': 5, 'wagon': 6, 'other': 7}
-                    processed_data[col] = processed_data[col].map(type_map).fillna(7)
-                elif col == 'paint_color':
-                    color_map = {'black': 0, 'white': 1, 'silver': 2, 'red': 3, 'blue': 4, 'green': 5, 'other': 6}
-                    processed_data[col] = processed_data[col].map(color_map).fillna(6)
-                elif col == 'state':
-                    # Simple hash-based encoding for states
-                    processed_data[col] = processed_data[col].apply(lambda x: hash(x) % 50)
-                elif col == 'model':
-                    # Simple hash-based encoding for models
-                    processed_data[col] = processed_data[col].apply(lambda x: hash(x) % 100)
-        
-        # Ensure all columns are numeric
-        for col in processed_data.columns:
-            if processed_data[col].dtype == 'object':
-                processed_data[col] = pd.to_numeric(processed_data[col], errors='coerce').fillna(0)
+        # Use label encoders from the trained model
+        if self.label_encoders is not None and self.categorical_cols is not None:
+            for col in self.categorical_cols:
+                if col in processed_data.columns:
+                    le = self.label_encoders[col]
+                    # Transform new data to the same encoding as training
+                    processed_data[col] = le.transform(processed_data[col].astype(str))
+        else:
+            raise ValueError("Label encoders not available. Please ensure random_forest.pkl is loaded properly.")
         
         return processed_data
     
+    def get_manufacturers(self) -> List[str]:
+        """Get list of available manufacturers"""
+        return list(self.manufacturer_models.keys())
+    
+    def get_models_for_manufacturer(self, manufacturer: str) -> List[str]:
+        """Get list of available models for a given manufacturer"""
+        manufacturer = manufacturer.lower()
+        if manufacturer in self.manufacturer_models:
+            # Filter out None values and return the list
+            return [model for model in self.manufacturer_models[manufacturer] if model is not None]
+        return ["other"]
+    
     def predict_condition(self, input_data: Dict[str, Any]) -> Tuple[Optional[str], Optional[Dict[str, float]]]:
-        """Make prediction using loaded model (Random Forest or Gradient Boosting)"""
+        """Make prediction using loaded model with label encoders"""
         if self.model is None:
             return "Error: No model loaded", {}
         
         try:
             # Create DataFrame from input data
-            input_df = pd.DataFrame([input_data])
+            new_data = pd.DataFrame([input_data])
             
-            # Preprocess the data
-            processed_data = self.preprocess_features(input_df)
+            # Preprocess the data using label encoders
+            processed_data = self.preprocess_features(new_data)
             
-            # Make prediction
-            prediction = self.model.predict(processed_data)[0]
+            # Get prediction probabilities
+            probs = self.model.predict_proba(processed_data)[0]  # get probabilities for first row
+            classes = self.target_encoder.classes_
             
-            # Get prediction probabilities if available
-            if hasattr(self.model, 'predict_proba'):
-                probabilities = self.model.predict_proba(processed_data)[0]
-                
-                # Create probability dictionary with condition names
-                proba_dict = {}
-                for i, prob in enumerate(probabilities):
-                    condition_name = self.condition_mapping.get(i, f"Class_{i}")
-                    proba_dict[condition_name] = float(prob)
-                
-                # Map the prediction to condition name
-                predicted_condition = self.condition_mapping.get(prediction, f"Class_{prediction}")
-                
-            else:
-                predicted_condition = self.condition_mapping.get(prediction, f"Class_{prediction}")
-                proba_dict = {predicted_condition: 1.0}
+            # Combine into a DataFrame
+            prob_df = pd.DataFrame({
+                "condition": classes,
+                "probability": probs
+            }).sort_values(by="probability", ascending=False)
+            
+            # Get predicted condition and confidence
+            predicted_condition = prob_df.iloc[0]["condition"]
+            confidence = prob_df.iloc[0]['probability']
+            
+            # Create probability dictionary
+            proba_dict = {}
+            for _, row in prob_df.iterrows():
+                proba_dict[row["condition"]] = float(row["probability"])
             
             return predicted_condition, proba_dict
             
@@ -407,6 +427,43 @@ class VehicleConditionPredictor:
         
         if input_data['owners'] < 0:
             return False, "Number of owners must be non-negative"
+        
+        # Validate categorical values
+        valid_cylinders = [8, 6, 4, 5, 3, 10, 12]
+        if input_data.get('cylinders') not in valid_cylinders:
+            return False, f"Cylinders must be one of: {valid_cylinders}"
+        
+        valid_fuel = ["gasoline", "other", "diesel", "hybrid", "unknown", "electric"]
+        if input_data.get('fuel') not in valid_fuel:
+            return False, f"Fuel must be one of: {valid_fuel}"
+        
+        valid_title_status = ["clean", "rebuilt", "lien", "other", "salvage", "missing", "parts only"]
+        if input_data.get('title_status') not in valid_title_status:
+            return False, f"Title status must be one of: {valid_title_status}"
+        
+        valid_transmission = ["other", "automatic", "manual", "unknown"]
+        if input_data.get('transmission') not in valid_transmission:
+            return False, f"Transmission must be one of: {valid_transmission}"
+        
+        valid_drive = ["unknown", "rwd", "4wd", "fwd"]
+        if input_data.get('drive') not in valid_drive:
+            return False, f"Drive must be one of: {valid_drive}"
+        
+        valid_type = ["pickup", "other", "unknown", "coupe", "suv", "hatchback", "van", "sedan", "offroad", "bus", "convertible", "wagon"]
+        if input_data.get('type') not in valid_type:
+            return False, f"Vehicle type must be one of: {valid_type}"
+        
+        valid_paint_color = ["white", "blue", "red", "black", "silver", "grey", "unknown", "brown", "other", "green", "custom"]
+        if input_data.get('paint_color') not in valid_paint_color:
+            return False, f"Paint color must be one of: {valid_paint_color}"
+        
+        valid_states = ["al", "ak", "az", "ar", "ca", "co", "ct", "dc", "de", "fl", "ga", "hi", "id", "il", "in", "ia", "ks", "ky", "la", "me", "md", "ma", "mi", "mn", "ms", "mo", "mt", "nc", "ne", "nv", "nj", "nm", "ny", "nh", "nd", "oh", "ok", "or", "pa", "ri", "sc", "sd", "tn", "tx", "ut", "vt", "va", "wa", "wv", "wi", "wy"]
+        if input_data.get('state') not in valid_states:
+            return False, f"State must be one of: {valid_states}"
+        
+        valid_location_cluster = [9, 3, -1, 8, 2, 0, 7, 5, 4, 6, 1]
+        if input_data.get('location_cluster') not in valid_location_cluster:
+            return False, f"Location cluster must be one of: {valid_location_cluster}"
         
         return True, "Valid"
     

@@ -134,25 +134,31 @@ class RideSenseUI:
             st.subheader("Basic Information")
             price = st.number_input("Price ($)", min_value=100, max_value=100000, value=15000, help="Vehicle asking price")
             year = st.number_input("Year", min_value=1900, max_value=2025, value=2015, help="Manufacturing year")
-            manufacturer = st.selectbox("Manufacturer", ["ford", "chevrolet", "toyota", "honda", "bmw", "mercedes", "audi", "nissan", "hyundai", "other"])
-            model_input = st.text_input("Model", value="camry", help="Vehicle model (e.g., camry, accord, f150)")
+            
+            # Dynamic manufacturer dropdown
+            manufacturers = self.predictor.get_manufacturers()
+            manufacturer = st.selectbox("Manufacturer", manufacturers, index=manufacturers.index("toyota") if "toyota" in manufacturers else 0)
+            
+            # Dynamic model dropdown based on selected manufacturer
+            available_models = self.predictor.get_models_for_manufacturer(manufacturer)
+            model_input = st.selectbox("Model", available_models, index=0 if available_models else 0)
             
             # Vehicle Specifications
             st.subheader("Vehicle Specifications")
-            cylinders = st.number_input("Cylinders", min_value=1, max_value=16, value=4, help="Number of engine cylinders")
-            fuel = st.selectbox("Fuel Type", ["gas", "diesel", "hybrid", "electric", "other"])
+            cylinders = st.selectbox("Cylinders", [8, 6, 4, 5, 3, 10, 12], index=2, help="Number of engine cylinders")
+            fuel = st.selectbox("Fuel Type", ["gasoline", "other", "diesel", "hybrid", "unknown", "electric"], index=0)
             odometer = st.number_input("Odometer (miles)", min_value=0, max_value=500000, value=60000, help="Total mileage")
-            title_status = st.selectbox("Title Status", ["clean", "lien", "rebuilt", "salvage", "missing", "other"])
-            transmission = st.selectbox("Transmission", ["automatic", "manual", "other"])
-            drive = st.selectbox("Drive Type", ["fwd", "rwd", "4wd", "awd", "other"])
-            vehicle_type = st.selectbox("Vehicle Type", ["sedan", "suv", "truck", "coupe", "hatchback", "convertible", "wagon", "other"])
-            paint_color = st.selectbox("Paint Color", ["black", "white", "silver", "red", "blue", "green", "other"])
+            title_status = st.selectbox("Title Status", ["clean", "rebuilt", "lien", "other", "salvage", "missing", "parts only"], index=0)
+            transmission = st.selectbox("Transmission", ["other", "automatic", "manual", "unknown"], index=1)
+            drive = st.selectbox("Drive Type", ["unknown", "rwd", "4wd", "fwd"], index=3)
+            vehicle_type = st.selectbox("Vehicle Type", ["pickup", "other", "unknown", "coupe", "suv", "hatchback", "van", "sedan", "offroad", "bus", "convertible", "wagon"], index=7)
+            paint_color = st.selectbox("Paint Color", ["white", "blue", "red", "black", "silver", "grey", "unknown", "brown", "other", "green", "custom"], index=0)
             
             # Ownership & Location
             st.subheader("Ownership & Location")
-            state = st.text_input("State (e.g., CA)", value="ca")
+            state = st.selectbox("State", ["al", "ak", "az", "ar", "ca", "co", "ct", "dc", "de", "fl", "ga", "hi", "id", "il", "in", "ia", "ks", "ky", "la", "me", "md", "ma", "mi", "mn", "ms", "mo", "mt", "nc", "ne", "nv", "nj", "nm", "ny", "nh", "nd", "oh", "ok", "or", "pa", "ri", "sc", "sd", "tn", "tx", "ut", "vt", "va", "wa", "wv", "wi", "wy"], index=4)
             owners = st.number_input("Number of Previous Owners", min_value=0, max_value=10, value=1, help="Number of previous owners (fewer is generally better)")
-            location_cluster = st.number_input("Location Cluster", min_value=0, max_value=100, value=0, help="Geographic location cluster identifier")
+            location_cluster = st.selectbox("Location Cluster", [9, 3, -1, 8, 2, 0, 7, 5, 4, 6, 1], index=5, help="Geographic location cluster identifier")
         
         return {
             "price": price,
