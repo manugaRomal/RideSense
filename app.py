@@ -24,15 +24,22 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 def main():
     """Main function to run the RideSense application with lazy loading"""
     try:
+        print("🚀 Starting RideSense application...")
+        
         # Import and initialize UI with lazy model loading
+        print("📦 Importing RideSenseUI...")
         from src.ui import RideSenseUI
         
+        print("🔄 Initializing UI (model will load lazily)...")
         with st.spinner("Initializing AI model..."):
             ui = RideSenseUI()
         
+        print("✅ UI initialized successfully!")
+        print("🎯 Starting UI run loop...")
         ui.run()
         
     except Exception as e:
+        print(f"❌ Error loading application: {str(e)}")
         st.error(f"❌ Error loading application: {str(e)}")
         st.exception(e)
         st.info("Please check that the random_forest.pkl file is in the model/ directory.")

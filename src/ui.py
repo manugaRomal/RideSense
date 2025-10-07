@@ -23,7 +23,9 @@ class RideSenseUI:
     def _ensure_predictor_loaded(self):
         """Lazy load the predictor to avoid blocking Streamlit startup"""
         if self.predictor is None:
+            print("🔄 Lazy loading VehicleConditionPredictor...")
             self.predictor = VehicleConditionPredictor()
+            print("✅ VehicleConditionPredictor loaded successfully!")
     
     def setup_css(self):
         """Setup custom CSS styling"""

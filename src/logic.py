@@ -74,39 +74,88 @@ class VehicleConditionPredictor:
     
     def load_model(self) -> bool:
         """Load Random Forest model with label encoders, fallback to Gradient Boosting"""
+        print("🔍 Starting model loading process...")
+        
         # Create model directory if it doesn't exist
         if not os.path.exists(self.model_dir):
+            print(f"📁 Creating model directory: {self.model_dir}")
             os.makedirs(self.model_dir)
+        else:
+            print(f"📁 Model directory exists: {self.model_dir}")
         
         # Try Random Forest first
         rf_model_path = os.path.join(self.model_dir, 'random_forest.pkl')
+        print(f"🔍 Checking for Random Forest model at: {rf_model_path}")
+        
         if os.path.exists(rf_model_path):
             try:
+                print("📦 Loading Random Forest model bundle...")
                 bundle = joblib.load(rf_model_path)
+                
+                # Extract components
                 self.model = bundle["model"]
                 self.label_encoders = bundle["label_encoders"]
                 self.target_encoder = bundle["target_encoder"]
                 self.categorical_cols = bundle["categorical_cols"]
                 self.numeric_cols = bundle["numeric_cols"]
-                print("Random Forest model with label encoders loaded from local file")
+                
+                # Log model details
+                print("✅ Random Forest model loaded successfully!")
+                print(f"   📊 Model type: {type(self.model).__name__}")
+                print(f"   🔢 Categorical columns: {len(self.categorical_cols)} - {self.categorical_cols}")
+                print(f"   🔢 Numeric columns: {len(self.numeric_cols)} - {self.numeric_cols}")
+                print(f"   🎯 Target encoder classes: {len(self.target_encoder.classes_)} - {list(self.target_encoder.classes_)}")
+                
+                # Log model parameters if available
+                if hasattr(self.model, 'n_estimators'):
+                    print(f"   🌳 Number of estimators: {self.model.n_estimators}")
+                if hasattr(self.model, 'max_depth'):
+                    print(f"   📏 Max depth: {self.model.max_depth}")
+                if hasattr(self.model, 'random_state'):
+                    print(f"   🎲 Random state: {self.model.random_state}")
+                
                 return True
             except Exception as e:
-                print(f"Error loading Random Forest model: {e}")
+                print(f"❌ Error loading Random Forest model: {e}")
+                print(f"   📋 Full error: {str(e)}")
         
         # Fallback to Gradient Boosting
-        print("Random Forest not available, trying Gradient Boosting...")
+        print("⚠️  Random Forest not available, trying Gradient Boosting...")
         gb_model_path = os.path.join(self.model_dir, 'gradient_boosting.pkl')
+        print(f"🔍 Checking for Gradient Boosting model at: {gb_model_path}")
+        
         if os.path.exists(gb_model_path):
             try:
+                print("📦 Loading Gradient Boosting model...")
                 self.model = joblib.load(gb_model_path)
-                print("Gradient Boosting model loaded from local file")
+                
+                # Log model details
+                print("✅ Gradient Boosting model loaded successfully!")
+                print(f"   📊 Model type: {type(self.model).__name__}")
+                
+                # Log model parameters if available
+                if hasattr(self.model, 'n_estimators'):
+                    print(f"   🌳 Number of estimators: {self.model.n_estimators}")
+                if hasattr(self.model, 'learning_rate'):
+                    print(f"   📈 Learning rate: {self.model.learning_rate}")
+                if hasattr(self.model, 'max_depth'):
+                    print(f"   📏 Max depth: {self.model.max_depth}")
+                
+                print("⚠️  Note: Using fallback model without label encoders")
                 return True
             except Exception as e:
-                print(f"Error loading Gradient Boosting model: {e}")
+                print(f"❌ Error loading Gradient Boosting model: {e}")
+                print(f"   📋 Full error: {str(e)}")
                 return False
         else:
-            print("Neither Random Forest nor Gradient Boosting model found")
-            print("Please ensure random_forest.pkl or gradient_boosting.pkl is in the model/ directory")
+            print("❌ Neither Random Forest nor Gradient Boosting model found")
+            print("   📁 Available files in model directory:")
+            if os.path.exists(self.model_dir):
+                for file in os.listdir(self.model_dir):
+                    file_path = os.path.join(self.model_dir, file)
+                    file_size = os.path.getsize(file_path) if os.path.isfile(file_path) else 0
+                    print(f"      - {file} ({file_size:,} bytes)")
+            print("   💡 Please ensure random_forest.pkl or gradient_boosting.pkl is in the model/ directory")
             return False
     
     
@@ -141,18 +190,29 @@ class VehicleConditionPredictor:
     def predict_condition(self, input_data: Dict[str, Any]) -> Tuple[Optional[str], Optional[Dict[str, float]]]:
         """Make prediction using loaded model with label encoders"""
         if self.model is None:
+            print("❌ Error: No model loaded")
             return "Error: No model loaded", {}
         
         try:
+            print("🔮 Starting prediction process...")
+            print(f"   📊 Input data keys: {list(input_data.keys())}")
+            
             # Create DataFrame from input data
             new_data = pd.DataFrame([input_data])
+            print(f"   📋 DataFrame shape: {new_data.shape}")
             
             # Preprocess the data using label encoders
+            print("🔧 Preprocessing data with label encoders...")
             processed_data = self.preprocess_features(new_data)
+            print(f"   📊 Processed data shape: {processed_data.shape}")
+            print(f"   🔢 Processed data columns: {list(processed_data.columns)}")
             
             # Get prediction probabilities
+            print("🎯 Making prediction...")
             probs = self.model.predict_proba(processed_data)[0]  # get probabilities for first row
             classes = self.target_encoder.classes_
+            print(f"   📈 Raw probabilities: {probs}")
+            print(f"   🎯 Available classes: {list(classes)}")
             
             # Combine into a DataFrame
             prob_df = pd.DataFrame({
@@ -164,6 +224,13 @@ class VehicleConditionPredictor:
             predicted_condition = prob_df.iloc[0]["condition"]
             confidence = prob_df.iloc[0]['probability']
             
+            print(f"✅ Prediction completed!")
+            print(f"   🎯 Predicted condition: {predicted_condition}")
+            print(f"   📊 Confidence: {confidence:.2%}")
+            print(f"   📈 Top 3 probabilities:")
+            for i, (_, row) in enumerate(prob_df.head(3).iterrows()):
+                print(f"      {i+1}. {row['condition']}: {row['probability']:.2%}")
+            
             # Create probability dictionary
             proba_dict = {}
             for _, row in prob_df.iterrows():
@@ -172,7 +239,10 @@ class VehicleConditionPredictor:
             return predicted_condition, proba_dict
             
         except Exception as e:
-            print(f"Prediction error: {str(e)}")
+            print(f"❌ Prediction error: {str(e)}")
+            print(f"   📋 Full error details: {str(e)}")
+            import traceback
+            print(f"   🔍 Traceback: {traceback.format_exc()}")
             return None, None
     
     def get_model_info(self, model: Any) -> Dict[str, Any]:
