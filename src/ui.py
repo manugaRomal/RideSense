@@ -18,21 +18,12 @@ class RideSenseUI:
     
     def __init__(self):
         self.predictor = None
-        self.setup_page_config()
         self.setup_css()
     
     def _ensure_predictor_loaded(self):
         """Lazy load the predictor to avoid blocking Streamlit startup"""
         if self.predictor is None:
             self.predictor = VehicleConditionPredictor()
-    
-    def setup_page_config(self):
-        """Setup Streamlit page configuration"""
-        st.set_page_config(
-            page_title="RideSense - Vehicle Condition Predictor", 
-            page_icon="🚗",
-            layout="wide"
-        )
     
     def setup_css(self):
         """Setup custom CSS styling"""

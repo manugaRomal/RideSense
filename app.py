@@ -11,14 +11,18 @@ import streamlit as st
 warnings.filterwarnings("ignore", category=UserWarning, module="xgboost")
 warnings.filterwarnings("ignore", message=".*use_container_width.*")
 
+# Set page config FIRST - before any other Streamlit commands
+st.set_page_config(
+    page_title="RideSense - Vehicle Condition Predictor", 
+    page_icon="🚗",
+    layout="wide"
+)
+
 # Add src directory to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
 def main():
     """Main function to run the RideSense application with lazy loading"""
-    st.title("🚗 RideSense - Vehicle Condition Predictor")
-    st.write("Loading application...")
-    
     try:
         # Import and initialize UI with lazy model loading
         from src.ui import RideSenseUI
@@ -26,7 +30,6 @@ def main():
         with st.spinner("Initializing AI model..."):
             ui = RideSenseUI()
         
-        st.success("✅ Model loaded successfully!")
         ui.run()
         
     except Exception as e:
