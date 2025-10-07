@@ -222,10 +222,15 @@ class RideSenseUI:
                 y="Probability", 
                 color="Probability",
                 color_continuous_scale="RdYlGn",
-                text_auto='.2%',
                 title="Condition Probability Distribution"
             )
-            fig.update_traces(textfont_size=12, textangle=0, textposition="outside")
+            # Add custom text labels with proper percentage formatting
+            fig.update_traces(
+                text=[f"{prob:.1%}" for prob in proba_df["Probability"]],
+                textfont_size=12, 
+                textangle=0, 
+                textposition="outside"
+            )
             fig.update_layout(showlegend=False, height=400)
             st.plotly_chart(fig, use_container_width=True)
             
