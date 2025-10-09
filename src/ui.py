@@ -4,11 +4,14 @@ Contains all the Streamlit user interface components
 """
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
 import warnings
 from typing import Dict, Any, List
+
+# Reset Plotly theme after streamlit import
+import plotly.io as pio
+pio.templates.default = 'plotly'
 from .logic import VehicleConditionPredictor
 
 # Suppress Streamlit deprecation warnings
@@ -225,44 +228,46 @@ class RideSenseUI:
             print(f"🔍 DEBUG - DataFrame:\n{proba_df}")
             print(f"🔍 DEBUG - DataFrame Probability column: {proba_df['Probability'].tolist()}")
             
-            # Create Matplotlib chart for consistent rendering
-            fig, ax = plt.subplots(figsize=(10, 6))
+            # Bar chart using go.Figure for more control
+            fig = go.Figure(data=[
+                go.Bar(
+                    x=proba_df["Condition"],
+                    y=proba_df["Probability"],
+                    marker_color=['#28a745', '#20c997', '#17a2b8', '#6f42c1', '#ffc107', '#dc3545', '#6c757d'],
+                    text=[f"{prob:.1%}" for prob in proba_df["Probability"]],
+                    textfont_size=12,
+                    textangle=0,
+                    textposition="outside",
+                    # Ensure proper data binding
+                    customdata=proba_df["Probability"],
+                    hovertemplate="<b>%{x}</b><br>Probability: %{customdata:.1%}<extra></extra>"
+                )
+            ])
             
-            # Define colors for each condition
-            colors = ['#28a745', '#20c997', '#17a2b8', '#6f42c1', '#ffc107', '#dc3545', '#6c757d']
-            
-            # Create bar chart
-            bars = ax.bar(proba_df["Condition"], proba_df["Probability"], color=colors[:len(proba_df)])
-            
-            # Add percentage labels on top of bars
-            for i, (bar, prob) in enumerate(zip(bars, proba_df["Probability"])):
-                height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width()/2., height + 0.01,
-                       f'{prob:.1%}', ha='center', va='bottom', fontsize=10, fontweight='bold')
-            
-            # Customize the chart
-            ax.set_title('Condition Probability Distribution', fontsize=16, fontweight='bold', pad=20)
-            ax.set_xlabel('Vehicle Condition', fontsize=12, fontweight='bold')
-            ax.set_ylabel('Probability', fontsize=12, fontweight='bold')
-            
-            # Set Y-axis to percentage format and range
-            ax.set_ylim(0, 1)
-            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.1%}'))
-            ax.set_yticks(np.arange(0, 1.1, 0.2))  # 0%, 20%, 40%, 60%, 80%, 100%
-            
-            # Add grid
-            ax.grid(True, alpha=0.3, axis='y')
-            ax.set_axisbelow(True)
-            
-            # Rotate x-axis labels for better readability
-            plt.xticks(rotation=45, ha='right')
-            
-            # Adjust layout
-            plt.tight_layout()
-            
-            # Display the chart
-            st.pyplot(fig)
-            plt.close(fig)  # Close the figure to free memory
+            fig.update_layout(
+                title="Condition Probability Distribution",
+                xaxis_title="Vehicle Condition",
+                yaxis_title="Probability",
+                yaxis=dict(
+                    tickformat='.1%',
+                    range=[0, 1],  # Force Y-axis to be 0-100%
+                    dtick=0.2,  # Set tick intervals to 20%
+                    showgrid=True,
+                    gridcolor='lightgray',
+                    zeroline=True
+                ),
+                showlegend=False,
+                height=400,
+                # Add cache-busting and ensure consistent rendering
+                template="plotly_white",
+                margin=dict(l=50, r=50, t=50, b=50),
+                # Ensure consistent rendering
+                autosize=True
+            )
+            # Use unique key to force chart refresh and prevent caching
+            import time
+            chart_key = f"prob_chart_{int(time.time())}"
+            st.plotly_chart(fig, use_container_width=True, key=chart_key)
             
             # Confidence score
             max_prob = max(probabilities.values())
@@ -420,51 +425,49 @@ class RideSenseUI:
         st.plotly_chart(fig, use_container_width=True)
     
     def render_probability_chart(self, probabilities: Dict[str, float]):
-        """Render probability distribution as bar chart using Matplotlib"""
+        """Render probability distribution as bar chart"""
         if not probabilities:
             return
         
         conditions = list(probabilities.keys())
         probs = list(probabilities.values())
         
-        # Create Matplotlib chart
-        fig, ax = plt.subplots(figsize=(10, 6))
+        fig = go.Figure(data=[
+            go.Bar(
+                x=conditions,
+                y=probs,
+                marker_color=['#28a745', '#20c997', '#17a2b8', '#6f42c1', '#ffc107', '#dc3545', '#6c757d'],
+                text=[f"{prob:.1%}" for prob in probs],
+                textfont_size=12,
+                textangle=0,
+                textposition="outside",
+                # Ensure proper data binding
+                customdata=probs,
+                hovertemplate="<b>%{x}</b><br>Probability: %{customdata:.1%}<extra></extra>"
+            )
+        ])
         
-        # Define colors for each condition
-        colors = ['#28a745', '#20c997', '#17a2b8', '#6f42c1', '#ffc107', '#dc3545', '#6c757d']
+        fig.update_layout(
+            title="Condition Probability Distribution",
+            xaxis_title="Vehicle Condition",
+            yaxis_title="Probability",
+            yaxis=dict(
+                tickformat='.1%',
+                range=[0, 1],  # Force Y-axis to be 0-100%
+                dtick=0.2,  # Set tick intervals to 20%
+                showgrid=True,
+                gridcolor='lightgray',
+                zeroline=True
+            ),
+            showlegend=False,
+            # Add cache-busting and ensure consistent rendering
+            template="plotly_white",
+            margin=dict(l=50, r=50, t=50, b=50),
+            # Ensure consistent rendering
+            autosize=True
+        )
         
-        # Create bar chart
-        bars = ax.bar(conditions, probs, color=colors[:len(conditions)])
-        
-        # Add percentage labels on top of bars
-        for bar, prob in zip(bars, probs):
-            height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2., height + 0.01,
-                   f'{prob:.1%}', ha='center', va='bottom', fontsize=10, fontweight='bold')
-        
-        # Customize the chart
-        ax.set_title('Condition Probability Distribution', fontsize=16, fontweight='bold', pad=20)
-        ax.set_xlabel('Vehicle Condition', fontsize=12, fontweight='bold')
-        ax.set_ylabel('Probability', fontsize=12, fontweight='bold')
-        
-        # Set Y-axis to percentage format and range
-        ax.set_ylim(0, 1)
-        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.1%}'))
-        ax.set_yticks(np.arange(0, 1.1, 0.2))  # 0%, 20%, 40%, 60%, 80%, 100%
-        
-        # Add grid
-        ax.grid(True, alpha=0.3, axis='y')
-        ax.set_axisbelow(True)
-        
-        # Rotate x-axis labels for better readability
-        plt.xticks(rotation=45, ha='right')
-        
-        # Adjust layout
-        plt.tight_layout()
-        
-        # Display the chart
-        st.pyplot(fig)
-        plt.close(fig)  # Close the figure to free memory
+        st.plotly_chart(fig, use_container_width=True)
     
     def render_price_comparison_chart(self, input_data: Dict[str, Any], price_analysis: Dict[str, Any]):
         """Render price comparison visualization"""
