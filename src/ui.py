@@ -20,12 +20,23 @@ class RideSenseUI:
         self.predictor = None
         self.setup_css()
     
-    def _ensure_predictor_loaded(self):
-        """Lazy load the predictor to avoid blocking Streamlit startup"""
-        if self.predictor is None:
-            print("🔄 Lazy loading VehicleConditionPredictor...")
-            self.predictor = VehicleConditionPredictor()
+    @st.cache_resource
+    def _load_predictor(_self):
+        """Load predictor with caching - prevents reloading on each interaction"""
+        print("🔄 Loading VehicleConditionPredictor (cached)...")
+        try:
+            predictor = VehicleConditionPredictor()
             print("✅ VehicleConditionPredictor loaded successfully!")
+            return predictor
+        except Exception as e:
+            print(f"❌ Error loading VehicleConditionPredictor: {e}")
+            st.error(f"❌ Error loading AI model: {str(e)}")
+            st.stop()
+    
+    def _ensure_predictor_loaded(self):
+        """Ensure predictor is loaded (lazy loading with cache)"""
+        if self.predictor is None:
+            self.predictor = self._load_predictor()
     
     def setup_css(self):
         """Setup custom CSS styling"""

@@ -7,6 +7,7 @@ import numpy as np
 import joblib
 import os
 import warnings
+import streamlit as st
 from sklearn.preprocessing import LabelEncoder
 from typing import Dict, Any, Tuple, Optional, List
 
@@ -72,19 +73,20 @@ class VehicleConditionPredictor:
         }
         self.load_model()
     
-    def load_model(self) -> bool:
-        """Load Random Forest model with label encoders - NO FALLBACK"""
+    @st.cache_resource
+    def load_model(_self) -> bool:
+        """Load Random Forest model with label encoders - NO FALLBACK - CACHED"""
         print("🔍 Starting model loading process...")
         
         # Create model directory if it doesn't exist
-        if not os.path.exists(self.model_dir):
-            print(f"📁 Creating model directory: {self.model_dir}")
-            os.makedirs(self.model_dir)
+        if not os.path.exists(_self.model_dir):
+            print(f"📁 Creating model directory: {_self.model_dir}")
+            os.makedirs(_self.model_dir)
         else:
-            print(f"📁 Model directory exists: {self.model_dir}")
+            print(f"📁 Model directory exists: {_self.model_dir}")
         
         # Load Random Forest model ONLY
-        rf_model_path = os.path.join(self.model_dir, 'random_forest.pkl')
+        rf_model_path = os.path.join(_self.model_dir, 'random_forest.pkl')
         print(f"🔍 Checking for Random Forest model at: {rf_model_path}")
         
         if os.path.exists(rf_model_path):
@@ -93,26 +95,26 @@ class VehicleConditionPredictor:
                 bundle = joblib.load(rf_model_path)
                 
                 # Extract components
-                self.model = bundle["model"]
-                self.label_encoders = bundle["label_encoders"]
-                self.target_encoder = bundle["target_encoder"]
-                self.categorical_cols = bundle["categorical_cols"]
-                self.numeric_cols = bundle["numeric_cols"]
+                _self.model = bundle["model"]
+                _self.label_encoders = bundle["label_encoders"]
+                _self.target_encoder = bundle["target_encoder"]
+                _self.categorical_cols = bundle["categorical_cols"]
+                _self.numeric_cols = bundle["numeric_cols"]
                 
                 # Log model details
                 print("✅ Random Forest model loaded successfully!")
-                print(f"   📊 Model type: {type(self.model).__name__}")
-                print(f"   🔢 Categorical columns: {len(self.categorical_cols)} - {self.categorical_cols}")
-                print(f"   🔢 Numeric columns: {len(self.numeric_cols)} - {self.numeric_cols}")
-                print(f"   🎯 Target encoder classes: {len(self.target_encoder.classes_)} - {list(self.target_encoder.classes_)}")
+                print(f"   📊 Model type: {type(_self.model).__name__}")
+                print(f"   🔢 Categorical columns: {len(_self.categorical_cols)} - {_self.categorical_cols}")
+                print(f"   🔢 Numeric columns: {len(_self.numeric_cols)} - {_self.numeric_cols}")
+                print(f"   🎯 Target encoder classes: {len(_self.target_encoder.classes_)} - {list(_self.target_encoder.classes_)}")
                 
                 # Log model parameters if available
-                if hasattr(self.model, 'n_estimators'):
-                    print(f"   🌳 Number of estimators: {self.model.n_estimators}")
-                if hasattr(self.model, 'max_depth'):
-                    print(f"   📏 Max depth: {self.model.max_depth}")
-                if hasattr(self.model, 'random_state'):
-                    print(f"   🎲 Random state: {self.model.random_state}")
+                if hasattr(_self.model, 'n_estimators'):
+                    print(f"   🌳 Number of estimators: {_self.model.n_estimators}")
+                if hasattr(_self.model, 'max_depth'):
+                    print(f"   📏 Max depth: {_self.model.max_depth}")
+                if hasattr(_self.model, 'random_state'):
+                    print(f"   🎲 Random state: {_self.model.random_state}")
                 
                 return True
             except Exception as e:
@@ -123,9 +125,9 @@ class VehicleConditionPredictor:
         else:
             print("❌ Random Forest model not found")
             print("   📁 Available files in model directory:")
-            if os.path.exists(self.model_dir):
-                for file in os.listdir(self.model_dir):
-                    file_path = os.path.join(self.model_dir, file)
+            if os.path.exists(_self.model_dir):
+                for file in os.listdir(_self.model_dir):
+                    file_path = os.path.join(_self.model_dir, file)
                     file_size = os.path.getsize(file_path) if os.path.isfile(file_path) else 0
                     print(f"      - {file} ({file_size:,} bytes)")
             print("   💡 Please ensure random_forest.pkl is in the model/ directory")
