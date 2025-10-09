@@ -216,7 +216,7 @@ class RideSenseUI:
             print(f"🔍 DEBUG - Probability values: {list(probabilities.values())}")
             print(f"🔍 DEBUG - Sum of probabilities: {sum(probabilities.values())}")
             
-            # Create probability chart
+            # Display top 3 conditions with big, clear formatting
             proba_df = pd.DataFrame(list(probabilities.items()), columns=["Condition", "Probability"])
             proba_df = proba_df.sort_values("Probability", ascending=False)
             
@@ -224,65 +224,58 @@ class RideSenseUI:
             print(f"🔍 DEBUG - DataFrame:\n{proba_df}")
             print(f"🔍 DEBUG - DataFrame Probability column: {proba_df['Probability'].tolist()}")
             
-            # Force all categories to display - create complete DataFrame with all conditions
-            all_conditions = ["excellent", "fair", "good", "like new", "new", "salvage", "salvaged"]
-            complete_probs = []
+            # Get top 3 conditions
+            top_3 = proba_df.head(3)
             
-            for condition in all_conditions:
-                if condition in probabilities:
-                    complete_probs.append(probabilities[condition])
-                else:
-                    complete_probs.append(0.0)
+            # Create big, clear display for top 3 conditions
+            st.markdown("### 🎯 Top 3 Predicted Conditions")
             
-            # Create complete DataFrame for plotting
-            df_plot = pd.DataFrame({
-                'Vehicle Condition': all_conditions, 
-                'Probability': complete_probs
-            })
+            # Create columns for the top 3
+            col1, col2, col3 = st.columns(3)
             
-            print(f"🔍 DEBUG - Complete DataFrame:\n{df_plot}")
-            print(f"🔍 DEBUG - Complete probabilities: {complete_probs}")
+            # Color mapping for conditions
+            condition_colors = {
+                "excellent": "#28a745",  # Green
+                "good": "#20c997",       # Teal
+                "like new": "#17a2b8",   # Blue
+                "fair": "#ffc107",       # Yellow
+                "new": "#6f42c1",        # Purple
+                "salvage": "#dc3545",    # Red
+                "salvaged": "#6c757d"    # Gray
+            }
             
-            # Use plotly.express for more robust rendering
-            fig = px.bar(
-                df_plot, 
-                x='Vehicle Condition', 
-                y='Probability',
-                text='Probability',
-                title="Condition Probability Distribution"
-            )
-            
-            # Customize the chart
-            fig.update_traces(
-                texttemplate='%{text:.1%}',
-                textposition='outside',
-                marker_color=['#28a745', '#20c997', '#17a2b8', '#6f42c1', '#ffc107', '#dc3545', '#6c757d']
-            )
-            
-            # Update layout for consistent rendering
-            fig.update_layout(
-                xaxis_title="Vehicle Condition",
-                yaxis_title="Probability",
-                yaxis=dict(
-                    tickformat='.1%',
-                    range=[0, 1],  # Force Y-axis to be 0-1 (0% to 100%)
-                    dtick=0.2,  # Set tick intervals to 20%
-                    showgrid=True,
-                    gridcolor='lightgray',
-                    zeroline=True
-                ),
-                showlegend=False,
-                height=400,
-                template='plotly',
-                margin=dict(l=50, r=50, t=50, b=50),
-                autosize=True
-            )
-            
-            # Use unique key to force chart refresh and prevent caching
-            import time
-            chart_key = f"prob_chart_{int(time.time())}"
-            # Force plotly theme in st.plotly_chart
-            st.plotly_chart(fig, use_container_width=True, key=chart_key, theme="streamlit")
+            # Display each of the top 3 conditions
+            for i, (_, row) in enumerate(top_3.iterrows()):
+                condition = row["Condition"]
+                prob = row["Probability"]
+                color = condition_colors.get(condition, "#6c757d")
+                
+                # Choose column
+                col = [col1, col2, col3][i]
+                
+                with col:
+                    # Create a big, prominent display
+                    st.markdown(f"""
+                    <div style="
+                        background: linear-gradient(135deg, {color}20, {color}10);
+                        border: 2px solid {color};
+                        border-radius: 15px;
+                        padding: 20px;
+                        text-align: center;
+                        margin: 10px 0;
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                    ">
+                        <h3 style="color: {color}; margin: 0 0 10px 0; font-size: 1.2em;">
+                            {condition.replace('_', ' ').title()}
+                        </h3>
+                        <div style="font-size: 2.5em; font-weight: bold; color: {color}; margin: 10px 0;">
+                            {prob:.1%}
+                        </div>
+                        <div style="font-size: 0.9em; color: #666;">
+                            Probability
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
             
             # Confidence score
             max_prob = max(probabilities.values())
@@ -440,62 +433,66 @@ class RideSenseUI:
         st.plotly_chart(fig, use_container_width=True)
     
     def render_probability_chart(self, probabilities: Dict[str, float]):
-        """Render probability distribution as bar chart with all categories forced"""
+        """Render top 3 conditions with big, clear formatting"""
         if not probabilities:
             return
         
-        # Force all categories to display - create complete DataFrame with all conditions
-        all_conditions = ["excellent", "fair", "good", "like new", "new", "salvage", "salvaged"]
-        complete_probs = []
+        # Create DataFrame and sort by probability
+        proba_df = pd.DataFrame(list(probabilities.items()), columns=["Condition", "Probability"])
+        proba_df = proba_df.sort_values("Probability", ascending=False)
         
-        for condition in all_conditions:
-            if condition in probabilities:
-                complete_probs.append(probabilities[condition])
-            else:
-                complete_probs.append(0.0)
+        # Get top 3 conditions
+        top_3 = proba_df.head(3)
         
-        # Create complete DataFrame for plotting
-        df_plot = pd.DataFrame({
-            'Vehicle Condition': all_conditions, 
-            'Probability': complete_probs
-        })
+        # Create big, clear display for top 3 conditions
+        st.markdown("### 🎯 Top 3 Predicted Conditions")
         
-        # Use plotly.express for more robust rendering
-        fig = px.bar(
-            df_plot, 
-            x='Vehicle Condition', 
-            y='Probability',
-            text='Probability',
-            title="Condition Probability Distribution"
-        )
+        # Create columns for the top 3
+        col1, col2, col3 = st.columns(3)
         
-        # Customize the chart
-        fig.update_traces(
-            texttemplate='%{text:.1%}',
-            textposition='outside',
-            marker_color=['#28a745', '#20c997', '#17a2b8', '#6f42c1', '#ffc107', '#dc3545', '#6c757d']
-        )
+        # Color mapping for conditions
+        condition_colors = {
+            "excellent": "#28a745",  # Green
+            "good": "#20c997",       # Teal
+            "like new": "#17a2b8",   # Blue
+            "fair": "#ffc107",       # Yellow
+            "new": "#6f42c1",        # Purple
+            "salvage": "#dc3545",    # Red
+            "salvaged": "#6c757d"    # Gray
+        }
         
-        # Update layout for consistent rendering
-        fig.update_layout(
-            xaxis_title="Vehicle Condition",
-            yaxis_title="Probability",
-            yaxis=dict(
-                tickformat='.1%',
-                range=[0, 1],  # Force Y-axis to be 0-1 (0% to 100%)
-                dtick=0.2,  # Set tick intervals to 20%
-                showgrid=True,
-                gridcolor='lightgray',
-                zeroline=True
-            ),
-            showlegend=False,
-            template='plotly',
-            margin=dict(l=50, r=50, t=50, b=50),
-            autosize=True
-        )
-        
-        # Force plotly theme in st.plotly_chart
-        st.plotly_chart(fig, use_container_width=True, theme="streamlit")
+        # Display each of the top 3 conditions
+        for i, (_, row) in enumerate(top_3.iterrows()):
+            condition = row["Condition"]
+            prob = row["Probability"]
+            color = condition_colors.get(condition, "#6c757d")
+            
+            # Choose column
+            col = [col1, col2, col3][i]
+            
+            with col:
+                # Create a big, prominent display
+                st.markdown(f"""
+                <div style="
+                    background: linear-gradient(135deg, {color}20, {color}10);
+                    border: 2px solid {color};
+                    border-radius: 15px;
+                    padding: 20px;
+                    text-align: center;
+                    margin: 10px 0;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                ">
+                    <h3 style="color: {color}; margin: 0 0 10px 0; font-size: 1.2em;">
+                        {condition.replace('_', ' ').title()}
+                    </h3>
+                    <div style="font-size: 2.5em; font-weight: bold; color: {color}; margin: 10px 0;">
+                        {prob:.1%}
+                    </div>
+                    <div style="font-size: 0.9em; color: #666;">
+                        Probability
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
     
     def render_price_comparison_chart(self, input_data: Dict[str, Any], price_analysis: Dict[str, Any]):
         """Render price comparison visualization"""
