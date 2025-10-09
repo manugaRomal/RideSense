@@ -224,29 +224,48 @@ class RideSenseUI:
             print(f"🔍 DEBUG - DataFrame:\n{proba_df}")
             print(f"🔍 DEBUG - DataFrame Probability column: {proba_df['Probability'].tolist()}")
             
-            # Bar chart using go.Figure for more control
-            fig = go.Figure(data=[
-                go.Bar(
-                    x=proba_df["Condition"],
-                    y=proba_df["Probability"],
-                    marker_color=['#28a745', '#20c997', '#17a2b8', '#6f42c1', '#ffc107', '#dc3545', '#6c757d'],
-                    text=[f"{prob:.1%}" for prob in proba_df["Probability"]],
-                    textfont_size=12,
-                    textangle=0,
-                    textposition="outside",
-                    # Ensure proper data binding
-                    customdata=proba_df["Probability"],
-                    hovertemplate="<b>%{x}</b><br>Probability: %{customdata:.1%}<extra></extra>"
-                )
-            ])
+            # Force all categories to display - create complete DataFrame with all conditions
+            all_conditions = ["excellent", "fair", "good", "like new", "new", "salvage", "salvaged"]
+            complete_probs = []
             
+            for condition in all_conditions:
+                if condition in probabilities:
+                    complete_probs.append(probabilities[condition])
+                else:
+                    complete_probs.append(0.0)
+            
+            # Create complete DataFrame for plotting
+            df_plot = pd.DataFrame({
+                'Vehicle Condition': all_conditions, 
+                'Probability': complete_probs
+            })
+            
+            print(f"🔍 DEBUG - Complete DataFrame:\n{df_plot}")
+            print(f"🔍 DEBUG - Complete probabilities: {complete_probs}")
+            
+            # Use plotly.express for more robust rendering
+            fig = px.bar(
+                df_plot, 
+                x='Vehicle Condition', 
+                y='Probability',
+                text='Probability',
+                title="Condition Probability Distribution"
+            )
+            
+            # Customize the chart
+            fig.update_traces(
+                texttemplate='%{text:.1%}',
+                textposition='outside',
+                marker_color=['#28a745', '#20c997', '#17a2b8', '#6f42c1', '#ffc107', '#dc3545', '#6c757d']
+            )
+            
+            # Update layout for consistent rendering
             fig.update_layout(
-                title="Condition Probability Distribution",
                 xaxis_title="Vehicle Condition",
                 yaxis_title="Probability",
                 yaxis=dict(
                     tickformat='.1%',
-                    range=[0, 1],  # Force Y-axis to be 0-100%
+                    range=[0, 1],  # Force Y-axis to be 0-1 (0% to 100%)
                     dtick=0.2,  # Set tick intervals to 20%
                     showgrid=True,
                     gridcolor='lightgray',
@@ -254,14 +273,10 @@ class RideSenseUI:
                 ),
                 showlegend=False,
                 height=400,
-                # Force plotly template explicitly
                 template='plotly',
                 margin=dict(l=50, r=50, t=50, b=50),
-                # Ensure consistent rendering
                 autosize=True
             )
-            # Force plotly template before rendering
-            fig.update_layout(template='plotly')
             
             # Use unique key to force chart refresh and prevent caching
             import time
@@ -425,50 +440,59 @@ class RideSenseUI:
         st.plotly_chart(fig, use_container_width=True)
     
     def render_probability_chart(self, probabilities: Dict[str, float]):
-        """Render probability distribution as bar chart"""
+        """Render probability distribution as bar chart with all categories forced"""
         if not probabilities:
             return
         
-        conditions = list(probabilities.keys())
-        probs = list(probabilities.values())
+        # Force all categories to display - create complete DataFrame with all conditions
+        all_conditions = ["excellent", "fair", "good", "like new", "new", "salvage", "salvaged"]
+        complete_probs = []
         
-        fig = go.Figure(data=[
-            go.Bar(
-                x=conditions,
-                y=probs,
-                marker_color=['#28a745', '#20c997', '#17a2b8', '#6f42c1', '#ffc107', '#dc3545', '#6c757d'],
-                text=[f"{prob:.1%}" for prob in probs],
-                textfont_size=12,
-                textangle=0,
-                textposition="outside",
-                # Ensure proper data binding
-                customdata=probs,
-                hovertemplate="<b>%{x}</b><br>Probability: %{customdata:.1%}<extra></extra>"
-            )
-        ])
+        for condition in all_conditions:
+            if condition in probabilities:
+                complete_probs.append(probabilities[condition])
+            else:
+                complete_probs.append(0.0)
         
+        # Create complete DataFrame for plotting
+        df_plot = pd.DataFrame({
+            'Vehicle Condition': all_conditions, 
+            'Probability': complete_probs
+        })
+        
+        # Use plotly.express for more robust rendering
+        fig = px.bar(
+            df_plot, 
+            x='Vehicle Condition', 
+            y='Probability',
+            text='Probability',
+            title="Condition Probability Distribution"
+        )
+        
+        # Customize the chart
+        fig.update_traces(
+            texttemplate='%{text:.1%}',
+            textposition='outside',
+            marker_color=['#28a745', '#20c997', '#17a2b8', '#6f42c1', '#ffc107', '#dc3545', '#6c757d']
+        )
+        
+        # Update layout for consistent rendering
         fig.update_layout(
-            title="Condition Probability Distribution",
             xaxis_title="Vehicle Condition",
             yaxis_title="Probability",
             yaxis=dict(
                 tickformat='.1%',
-                range=[0, 1],  # Force Y-axis to be 0-100%
+                range=[0, 1],  # Force Y-axis to be 0-1 (0% to 100%)
                 dtick=0.2,  # Set tick intervals to 20%
                 showgrid=True,
                 gridcolor='lightgray',
                 zeroline=True
             ),
             showlegend=False,
-            # Force plotly template explicitly
             template='plotly',
             margin=dict(l=50, r=50, t=50, b=50),
-            # Ensure consistent rendering
             autosize=True
         )
-        
-        # Force plotly template before rendering
-        fig.update_layout(template='plotly')
         
         # Force plotly theme in st.plotly_chart
         st.plotly_chart(fig, use_container_width=True, theme="streamlit")
