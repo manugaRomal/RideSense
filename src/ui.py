@@ -258,16 +258,20 @@ class RideSenseUI:
                 ),
                 showlegend=False,
                 height=400,
-                # Add cache-busting and ensure consistent rendering
-                template="plotly_white",
+                # Force plotly template explicitly
+                template='plotly',
                 margin=dict(l=50, r=50, t=50, b=50),
                 # Ensure consistent rendering
                 autosize=True
             )
+            # Force plotly template before rendering
+            fig.update_layout(template='plotly')
+            
             # Use unique key to force chart refresh and prevent caching
             import time
             chart_key = f"prob_chart_{int(time.time())}"
-            st.plotly_chart(fig, use_container_width=True, key=chart_key)
+            # Force plotly theme in st.plotly_chart
+            st.plotly_chart(fig, use_container_width=True, key=chart_key, theme="streamlit")
             
             # Confidence score
             max_prob = max(probabilities.values())
@@ -460,14 +464,18 @@ class RideSenseUI:
                 zeroline=True
             ),
             showlegend=False,
-            # Add cache-busting and ensure consistent rendering
-            template="plotly_white",
+            # Force plotly template explicitly
+            template='plotly',
             margin=dict(l=50, r=50, t=50, b=50),
             # Ensure consistent rendering
             autosize=True
         )
         
-        st.plotly_chart(fig, use_container_width=True)
+        # Force plotly template before rendering
+        fig.update_layout(template='plotly')
+        
+        # Force plotly theme in st.plotly_chart
+        st.plotly_chart(fig, use_container_width=True, theme="streamlit")
     
     def render_price_comparison_chart(self, input_data: Dict[str, Any], price_analysis: Dict[str, Any]):
         """Render price comparison visualization"""
