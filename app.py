@@ -7,10 +7,6 @@ import os
 import warnings
 import streamlit as st
 
-# Reset Plotly theme after streamlit import
-import plotly.io as pio
-pio.templates.default = 'plotly'
-
 # Suppress warnings for cleaner output
 warnings.filterwarnings("ignore", category=UserWarning, module="xgboost")
 warnings.filterwarnings("ignore", message=".*use_container_width.*")

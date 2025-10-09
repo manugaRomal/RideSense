@@ -8,10 +8,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 import warnings
 from typing import Dict, Any, List
-
-# Reset Plotly theme after streamlit import
-import plotly.io as pio
-pio.templates.default = 'plotly'
 from .logic import VehicleConditionPredictor
 
 # Suppress Streamlit deprecation warnings
