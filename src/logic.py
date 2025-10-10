@@ -32,6 +32,18 @@ class VehicleConditionPredictor:
             4: "Fair",
             5: "Salvage"
         }
+        self.location_clusters = {
+            0: "Davenport / Quad Cities area (Iowa)",
+            1: "Bakersfield / Central Valley (CA)",
+            2: "Delaware Water Gap area (PA/NJ)",
+            3: "Orlando / Central Florida area (FL)",
+            4: "Yakima Valley area (WA)",
+            5: "Maui (HI)",
+            6: "Palmer / Wasilla area (AK)",
+            7: "Montrose / San Juan Mountains (CO)",
+            8: "Corsicana / Dallas-Fort Worth (TX)",
+            9: "Hazard / Eastern Kentucky (KY)"
+        }
         self.manufacturer_models = {
             "acura": ["other", "mdx sh-", "tl", "mdx"],
             "alfa-romeo": ["romeo stelvio ti", "other"],
@@ -160,6 +172,10 @@ class VehicleConditionPredictor:
             # Filter out None values and return the list
             return [model for model in self.manufacturer_models[manufacturer] if model is not None]
         return ["other"]
+    
+    def get_location_cluster_options(self) -> List[Tuple[int, str]]:
+        """Get list of location cluster options as (cluster_number, display_name) tuples"""
+        return [(cluster_num, display_name) for cluster_num, display_name in self.location_clusters.items()]
     
     def predict_condition(self, input_data: Dict[str, Any]) -> Tuple[Optional[str], Optional[Dict[str, float]]]:
         """Make prediction using loaded model with label encoders"""
@@ -509,7 +525,7 @@ class VehicleConditionPredictor:
         if input_data.get('state') not in valid_states:
             return False, f"State must be one of: {valid_states}"
         
-        valid_location_cluster = [9, 3, -1, 8, 2, 0, 7, 5, 4, 6, 1]
+        valid_location_cluster = list(self.location_clusters.keys())
         if input_data.get('location_cluster') not in valid_location_cluster:
             return False, f"Location cluster must be one of: {valid_location_cluster}"
         

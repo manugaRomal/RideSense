@@ -169,7 +169,18 @@ class RideSenseUI:
             st.subheader("Ownership & Location")
             state = st.selectbox("State", ["al", "ak", "az", "ar", "ca", "co", "ct", "dc", "de", "fl", "ga", "hi", "id", "il", "in", "ia", "ks", "ky", "la", "me", "md", "ma", "mi", "mn", "ms", "mo", "mt", "nc", "ne", "nv", "nj", "nm", "ny", "nh", "nd", "oh", "ok", "or", "pa", "ri", "sc", "sd", "tn", "tx", "ut", "vt", "va", "wa", "wv", "wi", "wy"], index=4)
             owners = st.number_input("Number of Previous Owners", min_value=0, max_value=10, value=1, help="Number of previous owners (fewer is generally better)")
-            location_cluster = st.selectbox("Location Cluster", [9, 3, -1, 8, 2, 0, 7, 5, 4, 6, 1], index=5, help="Geographic location cluster identifier")
+            
+            # Location cluster with descriptive names
+            location_options = self.predictor.get_location_cluster_options()
+            # Find index for cluster 0 (Davenport)
+            default_index = next((i for i, (cluster_num, _) in enumerate(location_options) if cluster_num == 0), 0)
+            location_cluster = st.selectbox(
+                "Location Cluster", 
+                options=[opt[0] for opt in location_options],
+                format_func=lambda x: f"{x} - {self.predictor.location_clusters[x]}",
+                index=default_index,  # Default to cluster 0 (Davenport)
+                help="Geographic location cluster identifier"
+            )
         
         return {
             "price": price,
